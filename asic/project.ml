@@ -71,10 +71,14 @@ let create () =
     ~clocks:[ { Clock.port = "clk"; period = Time_float.Span.of_sec (1. /. 48e6) } ]
     (* Specimen analysis budgets, not measured board timing or physical acceptance. *)
     ~timing:
-      (Timing.create
-         ~input_delays:(delays [ "ui_in"; "uio_in"; "ena"; "rst_n" ] 1.)
-         ~output_delays:(delays [ "uo_out"; "uio_out"; "uio_oe" ] 2.)
-         ())
+      (* The approved Workbench provider predates [Timing.create]. Updating one
+         field at a time also preserves newer optional timing-intent defaults. *)
+      (let timing =
+         { Timing.empty with
+           input_delays = delays [ "ui_in"; "uio_in"; "ena"; "rst_n" ] 1.
+         }
+       in
+       { timing with output_delays = delays [ "uo_out"; "uio_out"; "uio_oe" ] 2. })
     ~pinout
     ~policy
     ()

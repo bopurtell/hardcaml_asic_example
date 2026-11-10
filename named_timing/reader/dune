@@ -1,0 +1,14 @@
+(executable
+ (name named_sources)
+ (modules named_sources)
+ (libraries hardcaml_asic.execution yojson))
+
+(executable
+ (name named_snapshot)
+ (modules named_snapshot)
+ (libraries hardcaml_asic.execution yojson))
+
+(executable
+ (name named_precheck)
+ (modules named_precheck)
+ (libraries hardcaml_asic.execution yojson))
