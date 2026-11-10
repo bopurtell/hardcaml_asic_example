@@ -1,0 +1,10 @@
+(executable
+ (name workload_emit)
+ (modules workload_emit)
+ (libraries pt8_adapter core hardcaml_asic)
+ (preprocess (pps ppx_jane ppx_hardcaml)))
+
+(executable
+ (name workload_public)
+ (modules workload_public)
+ (libraries hardcaml_asic.execution))
