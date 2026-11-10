@@ -6,6 +6,26 @@ This is the current continuation entry point for the reorganized example.
 Read [the layout guide](../repository_layout.md) and
 [migration execution record](ownership_layout.md) first.
 
+## Subsequent developer-workflow closeout
+
+Workbench now records [independently reviewed synthesis/collection and restart
+acceptance](../../../hardcaml_workbench/docs/developer_workflow_refactored_closeout.md)
+on a new ownership-v1 private store. The later installed provider generation is
+`36205ea4748c4972877ac198356d8e44` under `.dev/asic-synthesis-envelope-v1/generations/`.
+Its opt-in `prepare --synthesis-task-limit 6` captures a kernel-enforced six-total-
+container-task synthesis envelope; normal refresh retains that setting. This is
+synthesis-only, reduces usable concurrency, and does not imply physical signoff.
+The active provider publicly advertises synthesis-only report collection; compatible
+Workbench apps admit collect but continue to reject synthesis acceptance/signoff.
+
+Explicit `prepare --refresh --apps-only` can capture reviewed replacement app bytes
+while retaining companion configuration/history scope. It requires expected app
+hashes and rejects source/dependency drift. It was fixture-tested, but the accepted
+workflow used a fresh store instead. No existing owner's store or root companion
+selection was migrated. The closeout records the exact captured app hashes and
+temporary evidence paths; use those identities rather than assuming the historical
+installed inputs below are the newly accepted pair.
+
 ## What changed
 
 Active source now has IP-owned RTL/verification, ASIC-owned integration/system

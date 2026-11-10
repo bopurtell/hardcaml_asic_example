@@ -444,7 +444,93 @@ def git_context_diagnostic(manifest):
     return None
 
 
+def capture_apps_only(args, store, prior, receipt):
+    """New immutable app pair, retaining exact provider/config/history scope.
+
+    Provider commands and environment intentionally keep naming the retained old
+    generation. This is an application recapture, not a dependency/source refresh.
+    """
+    if prior is None:
+        raise RuntimeError('--apps-only requires an existing prepared generation')
+    if any(getattr(args, name, None) is not None for name in ('asic_generation', 'sdk_prefix', 'dune', 'git')):
+        raise RuntimeError('--apps-only cannot change dependency, SDK, Dune or Git inputs')
+    requested = getattr(args, 'synthesis_task_limit', None)
+    if requested is not None and prior['environment'].get('HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT') != str(requested):
+        raise RuntimeError('--apps-only cannot change synthesis task-limit opt-in')
+    if any(getattr(args, 'expected_' + kind + '_sha256', None) is None for kind in ('daemon', 'client')):
+        raise RuntimeError('--apps-only requires both explicit expected app hashes')
+    if inventory(store / 'project', SOURCE_FILES + SOURCE_DIRS) != prior['source_files']:
+        raise RuntimeError('--apps-only refuses source drift')
+    if inventory(store / 'project', ('.',)) != dict(prior['source_files'], **config_hashes(prior)):
+        raise RuntimeError('--apps-only refuses additional authored source/configuration')
+    verify(prior)
+    generation = store / 'generations' / receipt.name
+    generation.mkdir()
+    old = Path(prior['generation'])
+    replaced = {'apps/daemon.exe', 'apps/client.exe', 'setup/workbench_dev.py'}
+    for name in prior['captured_files']:
+        if name not in replaced:
+            copy_checked(old / name, generation / name)
+            (generation / name).chmod((old / name).stat().st_mode & 0o777)
+    copy_checked(Path(__file__), generation / 'setup/workbench_dev.py')
+    inputs = dict(prior['inputs'])
+    if args.wb_build_root is not None:
+        inputs['wb_build_root'] = str(args.wb_build_root.resolve(strict=True))
+    with locked('/tmp/opencode/workbench-pt8-build.lock'):
+        originals = {kind: Path(inputs['wb_build_root']) / relative for kind, relative in
+                     (('daemon', 'default/daemon/main.exe'), ('client', 'default/terminal/main.exe'))}
+        before = {kind: sha(path) for kind, path in originals.items()}
+        for kind, path in originals.items():
+            if before[kind] != getattr(args, 'expected_' + kind + '_sha256'):
+                raise RuntimeError('reviewed app hash mismatch: ' + kind)
+            copy_checked(path, generation / 'apps' / (kind + '.exe'))
+        if before != {kind: sha(path) for kind, path in originals.items()}:
+            raise RuntimeError('app pair changed during app-only capture')
+    if inventory(store / 'project', SOURCE_FILES + SOURCE_DIRS) != prior['source_files']:
+        raise RuntimeError('source changed during app-only capture')
+    if inventory(store / 'project', ('.',)) != dict(prior['source_files'], **config_hashes(prior)):
+        raise RuntimeError('source/configuration closure changed during app-only capture')
+    verify(prior)
+    manifest = json.loads(json.dumps(prior))
+    manifest.update(generation_id=receipt.name, generation=str(generation), inputs=inputs,
+        apps={kind: dict(path=str(generation / 'apps' / (kind + '.exe')), sha256=before[kind])
+              for kind in ('daemon', 'client')},
+        setup=dict(source=str(Path(__file__).resolve()), captured=str(generation / 'setup/workbench_dev.py'),
+                   sha256=sha(generation / 'setup/workbench_dev.py')),
+        app_recapture=dict(previous_generation=str(old), previous_manifest_sha256=sha(old / 'manifest.json'),
+                           provider_config_environment_preserved=True))
+    for path in generation.rglob('*'):
+        if path.is_file():
+            path.chmod(0o555 if path.stat().st_mode & 0o111 or path.suffix == '.exe' else 0o444)
+    manifest['captured_files'] = tree_hashes(generation)
+    write(generation / 'manifest.json', manifest)
+    (generation / 'manifest.json').chmod(0o444)
+    for path in generation.rglob('*'):
+        if path.is_file():
+            with path.open('rb') as stream:
+                os.fsync(stream.fileno())
+    for directory in sorted((p for p in generation.rglob('*') if p.is_dir()), reverse=True):
+        sync_dir(directory)
+        directory.chmod(0o555)
+    sync_dir(generation)
+    generation.chmod(0o555)
+    sync_dir(generation.parent)
+    return manifest
+
+
+def synthesis_task_limit(args, prior):
+    """A normal refresh retains its resource opt-in; absence never disables it."""
+    previous = (prior or {}).get('environment', {}).get('HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT')
+    if previous not in (None, '6'):
+        raise RuntimeError('invalid retained synthesis task-limit opt-in; explicit reconciliation required')
+    requested = getattr(args, 'synthesis_task_limit', None)
+    if requested not in (None, 6):
+        raise RuntimeError('synthesis task-limit must be absent or 6')
+    return 6 if requested == 6 or previous == '6' else None
+
+
 def capture(args, store, prior, receipt, migration=None):
+    task_limit = synthesis_task_limit(args, prior)
     inputs = dict(prior['inputs']) if prior else default_inputs(args.root)
     inputs.setdefault('git_dir', str(args.root / '.git'))
     inputs.setdefault('git', shutil.which('git', path=clean_environment(os.environ).get('PATH')))
@@ -515,7 +601,6 @@ def capture(args, store, prior, receipt, migration=None):
                PATH=str(generation / 'tool-bin') + ':' + str(asic / 'bin') + ':' + os.environ['PATH'],
                 PT8_PROJECT_ROOT=str(store / 'project'), PT8_REAL_DUNE=inputs['dune'],
                 GIT_OPTIONAL_LOCKS='0', GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull)
-    task_limit = getattr(args, 'synthesis_task_limit', None)
     if task_limit is not None:
         env['HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT'] = str(task_limit)
     build = store / 'builds' / receipt.name
@@ -635,7 +720,8 @@ def prepare(args, store):
                     if missing:
                         raise RuntimeError('missing authored source: ' + ', '.join(missing) +
                                            '; use prepare --refresh --import-missing-source; existing directories are never merged')
-                    manifest = capture(args, store, prior, receipt, migration)
+                    manifest = (capture_apps_only(args, store, prior, receipt) if getattr(args, 'apps_only', False) else
+                                capture(args, store, prior, receipt, migration))
                     manifest_link = store / 'manifest.json'
                     if not manifest_link.is_symlink():
                         if manifest_link.exists():
@@ -696,8 +782,10 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command', required=True)
     prep = sub.add_parser('prepare', allow_abbrev=False)
     prep.add_argument('--refresh', action='store_true')
+    prep.add_argument('--apps-only', action='store_true',
+                      help='explicit reviewed app-pair recapture; retain provider/config/environment history scope')
     prep.add_argument('--synthesis-task-limit', type=int, choices=(6,),
-                      help='opt in to total container tasks<=6 for fresh synthesis/report collection')
+                      help='opt in to total container tasks<=6 for fresh synthesis/report collection; retained on refresh')
     prep.add_argument('--import-missing-source', action='store_true', help='explicitly add entirely missing approved authored source entries')
     prep.add_argument('--update-owned-support', action='store_true', help='explicitly update only baseline-matching B-owned support files')
     for kind in ('client', 'daemon'):
@@ -712,6 +800,8 @@ def main(argv=None):
         parser.error('unexpected options: ' + ' '.join(extras))
     if args.command == 'prepare' and (args.import_missing_source or args.update_owned_support) and not args.refresh:
         parser.error('source migration flags require explicit prepare --refresh')
+    if args.command == 'prepare' and args.apps_only and (not args.refresh or args.import_missing_source or args.update_owned_support):
+        parser.error('--apps-only requires --refresh and cannot migrate source/support')
     args.root = args.root.resolve(strict=True)
     store = args.store.absolute() if args.store else args.root / '.dev/workbench-development'
     if store.exists() and store.resolve() != store:
