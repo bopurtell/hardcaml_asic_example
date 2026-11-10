@@ -1,3 +1,7 @@
+> **Source-layout note:** commands below include pre-migration paths. Use the
+> [layout map](repository_layout.md) and [current README](../README.md) when
+> adapting them; recorded installations and results remain historical.
+
 Run from `hardcaml_asic_example` in your existing `5.2.0+ox` shell. After a
 development refresh has succeeded, select it **in that same shell**:
 

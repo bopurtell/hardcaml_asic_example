@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
 import struct
 import subprocess
@@ -26,7 +27,7 @@ from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'simulation'))
+sys.path.insert(0, str(ROOT / 'integration/workbench'))
 import workbench_provider as router
 import workbench_dev as dev
 import workbench_git as scoped_git
@@ -81,7 +82,8 @@ class Acceptance(unittest.TestCase):
         cls.counter = 0
         cls.protected = {}
         for name in ('hardcaml-workbench-simulation.sexp', 'hardcaml-workbench-asic.sexp',
-                     'hardcaml-workbench-preparation.sexp', 'asic/project.ml', 'acceptance/dune'):
+                     'hardcaml-workbench-preparation.sexp', 'asics/fifo_demo/project/project.ml',
+                     'asics/fifo_demo/verif/bundle/dune'):
             path = ROOT / name
             cls.protected[str(path)] = router.sha(path)
         for name in ('simulation', 'asic'):
@@ -248,7 +250,7 @@ class Acceptance(unittest.TestCase):
         bad['provider_commands']['pt8-memory-workloads'] = [sys.executable, '-c', 'print("(broken")']
         path = self.evidence / 'bad-discovery-manifest.json'
         dev.write(path, bad)
-        command = [sys.executable, '-B', str(ROOT / 'simulation/workbench_provider.py'), '--manifest', str(path),
+        command = [sys.executable, '-B', str(ROOT / 'integration/workbench/workbench_provider.py'), '--manifest', str(path),
                    'discover', '--protocol-version', '1']
         result = subprocess.run(command, capture_output=True, timeout=30)
         self.assertNotEqual(result.returncode, 0)
@@ -270,7 +272,7 @@ class Acceptance(unittest.TestCase):
         fake['provider_commands'] = dict(self.children, **{'controlled-fifo': [sys.executable, str(fixture)]})
         manifest = directory / 'manifest.json'
         dev.write(manifest, fake)
-        command = [sys.executable, '-B', str(ROOT / 'simulation/workbench_provider.py'), '--manifest', str(manifest)]
+        command = [sys.executable, '-B', str(ROOT / 'integration/workbench/workbench_provider.py'), '--manifest', str(manifest)]
         transport, argv = self.request('exec-transport', command=command)
         child = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = child.communicate(timeout=30)
@@ -332,7 +334,7 @@ class Acceptance(unittest.TestCase):
         marker.write_bytes(b'old attempt/artifact identity\0')
         preference = self.store / 'client-state/preferences-sentinel'
         preference.write_bytes(b'saved UI selection')
-        edited = self.store / 'project/lib/controlled_fifo.ml'
+        edited = self.store / 'project/ip/controlled_fifo/rtl/controlled_fifo.ml'
         original = edited.read_bytes()
         edited.write_bytes(original + b'\n(* deliberate editable-development-source test *)\n')
         self.prepare()
@@ -474,9 +476,14 @@ class Acceptance(unittest.TestCase):
         driver = manifest['generation'] + '/provider/project.exe'
         planned = json.loads(command('captured-plan', [driver, 'flow', 'plan', *options]))
         # Exercise exactly the private _build/default location stock Preparation executes.
-        command('source-build', ['dune', 'build', '--root', str(project), '-j2', '--', 'bin/project.exe'])
-        command('ordinary-tests', ['dune', 'runtest', '--root', str(project), '-j2', 'test', 'asic_test', 'timing'])
-        driver = str(project / '_build/default/bin/project.exe')
+        command('source-build', ['dune', 'build', '--root', str(project), '-j2', '--', 'asics/fifo_demo/cli/project.exe'])
+        # Preserve the old test/asic_test/timing scope. The authored bundle
+        # harness is now nested under verif, but has its own disposable Git setup
+        # and was never part of this scoped-Git ordinary-test invocation.
+        command('ordinary-tests', ['dune', 'build', '--root', str(project), '-j2',
+            '@@ip/controlled_fifo/verif/cyclesim/runtest', '@@asics/fifo_demo/verif/runtest',
+            '@@tooling_acceptance/timing/fixture/verif/runtest'])
+        driver = str(project / '_build/default/asics/fifo_demo/cli/project.exe')
         fresh = json.loads(command('source-plan', [driver, 'flow', 'plan', *options]))
         self.assertEqual(fresh['plan_identity'], planned['plan_identity'])
         emitted = json.loads(command('source-emit', [driver, 'flow', 'emit', *options,
@@ -486,10 +493,10 @@ class Acceptance(unittest.TestCase):
         bundle_manifest = json.loads((bundle / 'manifest.json').read_text())
         self.assertTrue(bundle_manifest['source_inputs'])
         # Actual bundle inputs must be the edited prepared files, not owner checkout bytes.
-        copied = bundle / 'inputs/lib/controlled_fifo.ml'
-        self.assertEqual(copied.read_bytes(), (project / 'lib/controlled_fifo.ml').read_bytes())
+        copied = bundle / 'inputs/ip/controlled_fifo/rtl/controlled_fifo.ml'
+        self.assertEqual(copied.read_bytes(), (project / 'ip/controlled_fifo/rtl/controlled_fifo.ml').read_bytes())
         self.assertIn(b'deliberate editable', copied.read_bytes())
-        self.assertNotEqual(copied.read_bytes(), (ROOT / 'lib/controlled_fifo.ml').read_bytes())
+        self.assertNotEqual(copied.read_bytes(), (ROOT / 'ip/controlled_fifo/rtl/controlled_fifo.ml').read_bytes())
 
     def test_10_launcher_foreground_lock_and_explicit_connection(self):
         directory = self.evidence / 'launcher'
@@ -560,25 +567,26 @@ class Acceptance(unittest.TestCase):
         removed = self.evidence / 'legacy-omitted-sources'
         removed.mkdir()
         for name in dev.IMPORT_GROUPS:
+            (removed / name).parent.mkdir(parents=True, exist_ok=True)
             (project / name).rename(removed / name)
-        before = router.inventory(project, ('lib', 'simulation', 'scripts'))
+        before = router.inventory(project, ('ip/controlled_fifo/rtl', 'ip/controlled_fifo/verif/simulation', 'scripts'))
         self.prepare()  # reports the gap; never silently imports
-        self.assertFalse((project / 'test').exists())
+        self.assertFalse((project / 'ip/controlled_fifo/verif/cyclesim').exists())
         self.prepare('--refresh', expected=2)
         self.assertEqual(dev.selected_manifest(self.store), current)
         self.prepare('--refresh', '--import-missing-source', '--dune', '/bin/false', expected=2)
         self.assertEqual(dev.selected_manifest(self.store), current)
-        self.assertEqual(router.inventory(project, ('lib', 'simulation', 'scripts')), before)
+        self.assertEqual(router.inventory(project, ('ip/controlled_fifo/rtl', 'ip/controlled_fifo/verif/simulation', 'scripts')), before)
         for name, roots in dev.IMPORT_GROUPS.items():
             self.assertEqual(router.inventory(project, roots), router.inventory(ROOT, roots))
         # Only authored acceptance harness files, not retained snapshots/results.
-        self.assertEqual(set(p.name for p in (project / 'acceptance').iterdir()),
+        self.assertEqual(set(p.name for p in (project / 'asics/fifo_demo/verif/bundle').iterdir()),
                          {Path(name).name for name in router.ACCEPTANCE_FILES})
-        edited_test = project / 'test/fifo_test.ml'
+        edited_test = project / 'ip/controlled_fifo/verif/cyclesim/fifo_test.ml'
         edited_test.write_bytes(edited_test.read_bytes() + b'\n(* user test-source edit, retained on repeat import *)\n')
         test_digest = router.sha(edited_test)
         # Explicit support update must refuse a user edit against the baseline.
-        router_path = project / 'simulation/workbench_provider.py'
+        router_path = project / 'integration/workbench/workbench_provider.py'
         router_before = router_path.read_bytes()
         router_path.write_bytes(router_before + b'\n# user-owned router edit\n')
         user_router = router_path.read_bytes()
@@ -598,8 +606,8 @@ class Acceptance(unittest.TestCase):
         self.assertEqual(final['source_owner_root'], str(ROOT))
         self.assertEqual(final['source_dirs'], list(router.SOURCE_DIRS))
         self.assertEqual(router.sha(edited_test), test_digest)
-        self.assertEqual(router.sha(Path(final['generation']) / 'source/test/fifo_test.ml'), test_digest)
-        self.assertEqual(router.sha(Path(final['generation']) / 'provider/simulation/workbench_provider.py'), router.sha(router_path))
+        self.assertEqual(router.sha(Path(final['generation']) / 'source/ip/controlled_fifo/verif/cyclesim/fifo_test.ml'), test_digest)
+        self.assertEqual(router.sha(Path(final['generation']) / 'provider/integration/workbench/workbench_provider.py'), router.sha(router_path))
         self.prepare()
         self.assertEqual(dev.selected_manifest(self.store), final)
         self.assertEqual((self.store / 'state/history-sentinel').read_bytes(), b'old attempt/artifact identity\0')
@@ -617,38 +625,40 @@ class Acceptance(unittest.TestCase):
         owner = directory / 'owner'
         owner.mkdir()
         for name, roots in dev.IMPORT_GROUPS.items():
-            if name == 'test':
-                (owner / 'test').mkdir()
-                (owner / 'test/owned.ml').write_text('let owned = true\n')
+            if name == 'ip/controlled_fifo/verif/cyclesim':
+                (owner / name).mkdir(parents=True)
+                (owner / name / 'owned.ml').write_text('let owned = true\n')
+                (project / name).parent.mkdir(parents=True)
             elif name == 'bootstrap.sh':
                 (project / name).write_text('existing user file\n')
             else:
-                (project / name).mkdir()
-        prior = dict(source_owner_root=str(owner), inputs={'git_dir': str(owner / '.git')}, source_files={})
+                (project / name).mkdir(parents=True, exist_ok=True)
+        prior = dict(source_layout=router.SOURCE_LAYOUT, source_owner_root=str(owner),
+                     inputs={'git_dir': str(owner / '.git')}, source_files={})
         args = SimpleNamespace(root=ROOT, import_missing_source=True, update_owned_support=False)
         rename = dev.rename_new
         for race in ('empty-directory', 'symlink'):
             receipt = directory / race
             receipt.mkdir()
             def collide(source, target):
-                if target == project / 'test':
+                if target == project / 'ip/controlled_fifo/verif/cyclesim':
                     if race == 'empty-directory':
                         target.mkdir()
                     else:
-                        target.symlink_to(owner / 'test', target_is_directory=True)
+                        target.symlink_to(owner / 'ip/controlled_fifo/verif/cyclesim', target_is_directory=True)
                 return rename(source, target)
             with patch.object(dev, 'rename_new', side_effect=collide):
                 with self.assertRaises(FileExistsError):
                     dev.migrate_sources(args, store, prior, receipt)
-            self.assertTrue((receipt / 'source-stage/test/owned.ml').is_file())
+            self.assertTrue((receipt / 'source-stage/ip/controlled_fifo/verif/cyclesim/owned.ml').is_file())
             self.assertTrue((receipt / 'source-migration-intent.json').exists())
             self.assertEqual(json.loads((receipt / 'source-migration-result.json').read_text())['installed'], [])
             if race == 'empty-directory':
-                self.assertEqual(list((project / 'test').iterdir()), [])
-                (project / 'test').rmdir()
+                self.assertEqual(list((project / 'ip/controlled_fifo/verif/cyclesim').iterdir()), [])
+                (project / 'ip/controlled_fifo/verif/cyclesim').rmdir()
             else:
-                self.assertTrue((project / 'test').is_symlink())
-                (project / 'test').unlink()
+                self.assertTrue((project / 'ip/controlled_fifo/verif/cyclesim').is_symlink())
+                (project / 'ip/controlled_fifo/verif/cyclesim').unlink()
         args.import_missing_source = False
         args.update_owned_support = True
         for name in dev.OWNED_SUPPORT:
@@ -666,15 +676,15 @@ class Acceptance(unittest.TestCase):
             self.assertEqual((project / name).read_bytes(), (owner / name).read_bytes())
             self.assertEqual(router.sha(receipt / 'source-backup' / name), prior['source_files'][name])
         self.assertEqual((project / 'bootstrap.sh').read_text(), 'existing user file\n')
-        simulation = project / 'simulation'
-        simulation.rename(project / 'simulation-saved')
-        simulation.symlink_to(owner / 'simulation', target_is_directory=True)
+        simulation = project / 'integration/workbench'
+        simulation.rename(project / 'integration/workbench-saved')
+        simulation.symlink_to(owner / 'integration/workbench', target_is_directory=True)
         receipt = directory / 'symlink-support-parent'
         receipt.mkdir()
-        owner_before = router.sha(owner / 'simulation/workbench_provider.py')
+        owner_before = router.sha(owner / 'integration/workbench/workbench_provider.py')
         with self.assertRaisesRegex(RuntimeError, 'parent contains a symlink'):
             dev.migrate_sources(args, store, prior, receipt)
-        self.assertEqual(router.sha(owner / 'simulation/workbench_provider.py'), owner_before)
+        self.assertEqual(router.sha(owner / 'integration/workbench/workbench_provider.py'), owner_before)
 
     def test_13_scoped_git_real_repositories_and_inherited_selectors(self):
         current = dev.selected_manifest(self.store)
@@ -725,10 +735,10 @@ class Acceptance(unittest.TestCase):
         for root in context['source_roots']:
             source_env = dict(clean, GIT_DIR=current['inputs']['git_dir'], GIT_WORK_TREE=root)
             self.assertEqual(invoke(['rev-parse', 'HEAD'], cwd=Path(root), expected_env=source_env).returncode, 0)
-            invoke(['-C', root, '-C', '', 'status', '--porcelain', '--', 'lib/controlled_fifo.ml'], expected_env=source_env)
+            invoke(['-C', root, '-C', '', 'status', '--porcelain', '--', 'ip/controlled_fifo/rtl/controlled_fifo.ml'], expected_env=source_env)
         self.assertEqual(router.sha(source_index), source_index_before)
         # Descendants/other temporary roots are not prefix-matched into source context.
-        invoke(['-C', current['project_root'], '-C', 'lib', 'rev-parse', 'HEAD'])
+        invoke(['-C', current['project_root'], '-C', 'ip/controlled_fifo/rtl', 'rev-parse', 'HEAD'])
         invoke(['--no-pager', '-C', current['project_root'], '-C', str(fixture), 'rev-parse', '--git-dir'])
         invoke(['--version'])
         for override in (['--git-dir', current['inputs']['git_dir']], ['--work-tree=/tmp'],
@@ -802,6 +812,42 @@ class Acceptance(unittest.TestCase):
         dev.write(directory / 'receipt.json', dict(passed=True, reports=reports,
                   actual_revisions_accepted=True, real_wrong_revision_rejected=True,
                   native_metadata_only=True, eda_allocation=0))
+
+    def test_15_immutable_provider_imports_independent_of_owner_checkout(self):
+        current = dev.selected_manifest(self.store)
+        generation = Path(current['generation'])
+        directory = self.evidence / 'independent-captured-imports'
+        directory.mkdir()
+        relocated = directory / 'relocated-provider'
+        shutil.copytree(generation / 'provider', relocated)
+        # Isolated Python ignores PYTHONPATH and the working directory. Trace both
+        # the real immutable capture and a relocated copy with no owner sources.
+        program = '''import importlib, json, pathlib, sys
+root = pathlib.Path(sys.argv[1]).resolve(strict=True)
+sys.path.insert(0, str(root / 'integration/workbench'))
+names = ('wire', 'workbench_paths', 'workbench_git', 'workbench_provider',
+         'pt8_acceptance', 'pt8_workloads', 'pt8_workbench_runner', 'pt8_workbench_provider')
+modules = {name: str(pathlib.Path(importlib.import_module(name).__file__).resolve(strict=True))
+           for name in names}
+assert all(pathlib.Path(path).is_relative_to(root) for path in modules.values()), modules
+assert importlib.import_module('workbench_paths').ROOT == root
+print(json.dumps(modules, indent=2))
+'''
+        for label, root in (('immutable', generation / 'provider'), ('relocated', relocated)):
+            trace = directory / (label + '.files.trace')
+            argv = ['strace', '-f', '-e', 'trace=file', '-o', str(trace),
+                    sys.executable, '-I', '-B', '-c', program, str(root)]
+            result = subprocess.run(argv, cwd=directory, env=dict(os.environ, PYTHONPATH=str(ROOT)),
+                                    capture_output=True, text=True, timeout=30)
+            (directory / (label + '.stdout')).write_text(result.stdout)
+            (directory / (label + '.stderr')).write_text(result.stderr)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn(str(ROOT) + '/', trace.read_text())
+            self.assertEqual(len(json.loads(result.stdout)), 8)
+        dev.verify_hashes(generation, current['captured_files'])
+        dev.write(directory / 'receipt.json', dict(passed=True, generation=str(generation),
+                  immutable_capture_unchanged=True, isolated_python=True,
+                  owner_checkout_file_accesses=0, relocated_imports=True, eda_allocation=0))
 
 
 def main():

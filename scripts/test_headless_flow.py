@@ -330,7 +330,7 @@ finally:
         self.assertFalse((self.base/'launched').exists())
 
     def test_changed_source_and_catalog_reject_before_launch(self):
-        for relative in ('lib/controlled_fifo.ml', 'asic/flow_profiles.ml'):
+        for relative in ('ip/controlled_fifo/rtl/controlled_fifo.ml', 'asics/fifo_demo/project/flow_profiles.ml'):
             self.setup_client()
             # Mutation after preview, before real project run. Real project enforces identity.
             wrapper = self.base/'project wrapper'

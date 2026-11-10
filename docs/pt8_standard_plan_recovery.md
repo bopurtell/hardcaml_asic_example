@@ -1,5 +1,9 @@
 # PT8 private standard-flow recovery
 
+> **Historical recovery record:** commands/source paths below describe the original
+> sessions. For the current layout and new-session boundary, see
+> [Workbench continuation](migration_plans/workbench_continuation.md).
+
 ## Bounded plan (written before correction)
 
 2026-11-05. Owner: example/setup recovery slice. The existing

@@ -131,7 +131,7 @@ else:
             self.invoke(command, '--help', cwd=self.outside)
         self.invoke('describe', '--json', cwd=self.outside)
         self.assertFalse((self.root / '_flow_results').exists())
-        (self.root / 'bin/project.ml').unlink()
+        (self.root / 'asics/fifo_demo/cli/project.ml').unlink()
         self.invoke('emit', status=2)
         self.assertFalse((self.root / '_flow_results').exists())
 
@@ -236,7 +236,7 @@ else:
 
     def test_endpoint_explicit_bundle_spaces_overrides_and_exit(self):
         env = dict(self.env, CONTRACT='4', PROVIDER_EXIT='37', TOOLCHAIN='ignored tools')
-        (self.root / 'bin/project.ml').unlink()  # would prevent emission
+        (self.root / 'asics/fifo_demo/cli/project.ml').unlink()  # would prevent emission
         self.invoke('run', '--endpoint', 'floorplan', '--project-root', str(self.root),
                     '--bundle', 'existing bundle', '--results-root', 'result store',
                     '--toolchain', 'explicit tools', '--support-tools', 'support tools',
@@ -308,8 +308,8 @@ else:
             self.assertIn('snapshot', p['methodology'])
             manifest = json.loads(p['bundle_manifest'])
             # Every declaration file comes from the Project inventory used by export_trace.
-            for name in ('asic/flow_catalog.ml', 'asic/flow_catalog.mli',
-                         'asic/flow_profiles.ml', 'asic/flow_profiles.mli'):
+            for name in ('asics/fifo_demo/project/flow_catalog.ml', 'asics/fifo_demo/project/flow_catalog.mli',
+                         'asics/fifo_demo/project/flow_profiles.ml', 'asics/fifo_demo/project/flow_profiles.mli'):
                 self.assertIn(name, json.dumps(manifest))
         self.assertFalse((self.root / '_flow_results').exists())
         self.assertFalse(self.log.exists())
@@ -355,7 +355,7 @@ else:
             self.named_run(plan, *args, status=1)
         self.invoke('flow', 'run', '--endpoint', 'floorplan', '--expected-plan-identity',
                     plan['plan_identity'], status=1)
-        for name in ('README.md', 'asic/flow_profiles.ml', 'asic/flow_catalog.ml'):
+        for name in ('README.md', 'asics/fifo_demo/project/flow_profiles.ml', 'asics/fifo_demo/project/flow_catalog.ml'):
             path = self.root / name
             before = path.read_bytes()
             path.write_bytes(before + b'\n(* source changed *)\n')

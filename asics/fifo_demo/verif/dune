@@ -1,0 +1,4 @@
+(tests
+ (names wrapper_test resolution_test catalog_test)
+ (libraries core hardcaml hardcaml_asic fifo_asic fifo_test_support yojson)
+ (preprocess (pps ppx_jane)))

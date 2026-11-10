@@ -14,20 +14,33 @@ import uuid
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'simulation'))
+sys.path.insert(0, str(ROOT / 'integration/workbench'))
 from wire import parse, record, sexp
-from workbench_provider import (ACCEPTANCE_FILES, SOURCE_DIRS, SOURCE_FILES, SUITE_PATHS, SUITES,
+from workbench_provider import (ACCEPTANCE_FILES, SOURCE_DIRS, SOURCE_FILES, SOURCE_LAYOUT, SUITE_PATHS, SUITES,
                                 environment, inventory, sha, source_drift)
 from workbench_git import clean_environment
 
 CONFIGS = ('simulation', 'asic', 'preparation')
-TARGETS = ('simulation/test_provider.exe', 'simulation/fifo_sim.exe',
-           'workloads/workload_emit.exe', 'workloads/workload_public.exe', 'bin/project.exe')
-IMPORT_GROUPS = {name: (name,) for name in ('test', 'asic_test', 'timing', 'named_timing', 'physical_timing', 'bootstrap.sh')}
-IMPORT_GROUPS['acceptance'] = ACCEPTANCE_FILES
-OWNED_SUPPORT = ('simulation/workbench_provider.py', 'scripts/workbench_dev.py',
+TARGETS = ('ip/controlled_fifo/verif/simulation/test_provider.exe', 'ip/controlled_fifo/verif/simulation/fifo_sim.exe',
+           'tooling_acceptance/workloads/workload_emit.exe', 'tooling_acceptance/workloads/workload_public.exe',
+           'asics/fifo_demo/cli/project.exe')
+IMPORT_GROUPS = {name: (name,) for name in ('ip/controlled_fifo/verif/cyclesim', 'asics/fifo_demo/verif',
+    'tooling_acceptance/timing', 'bootstrap.sh')}
+OWNED_SUPPORT = ('integration/workbench/workbench_provider.py', 'scripts/workbench_dev.py',
                  'scripts/test_workbench_dev.py', 'scripts/test_pt8_waveforms.py',
-                 'scripts/workbench_git.py')
+                  'scripts/workbench_git.py')
+
+
+def require_source_layout(project, manifest=None):
+    """Moves cannot be reconciled by the additive missing-source importer."""
+    project = Path(project)
+    legacy = ('lib', 'asic', 'bin', 'memory', 'variants', 'workloads', 'simulation',
+              'test_support', 'test', 'asic_test', 'timing', 'named_timing', 'physical_timing')
+    if ((manifest is not None and manifest.get('source_layout') != SOURCE_LAYOUT)
+            or any((project / name).exists() or (project / name).is_symlink() for name in legacy)):
+        raise RuntimeError('legacy source layout: existing copies/history remain unchanged; explicitly create '
+                           'a new --store for the migrated ownership layout. '
+                           '--refresh and --import-missing-source cannot migrate moved sources')
 
 
 def rename_new(source, destination):
@@ -47,6 +60,7 @@ def source_owner(prior, root):
 
 def migrate_sources(args, store, prior, receipt):
     """Explicit additions/support updates; no merge/recopy of existing authored dirs."""
+    require_source_layout(store / 'project', prior)
     owner = source_owner(prior, args.root).resolve(strict=True)
     project = store / 'project'
     planned = []
@@ -344,6 +358,7 @@ def copy_sources(source, destination):
 
 
 def selected_manifest(store):
+    require_source_layout(store / 'project')
     unsettled(store)
     path = store / 'manifest.json'
     if not path.exists():
@@ -355,10 +370,12 @@ def selected_manifest(store):
         raise RuntimeError('manifest does not own this fixed store/project')
     if Path(value['generation']).resolve() != (store / 'selected').resolve():
         raise RuntimeError('manifest selection mismatch')
+    require_source_layout(store / 'project', value)
     return value
 
 
 def verify(manifest, *, configs=True, allow_legacy=False, allow_pending=False):
+    require_source_layout(manifest['project_root'], manifest)
     verify_hashes(manifest['generation'], manifest['captured_files'])
     verify_hashes(manifest['inputs']['asic_generation'], manifest['asic_files'])
     if 'git_context' in manifest and sha(manifest['git_context']['real_git']) != manifest['git_context']['real_git_sha256']:
@@ -474,13 +491,15 @@ def capture(args, store, prior, receipt, migration=None):
             copy_checked(path, generation / 'apps' / (kind + '.exe'))
         if before != {kind: sha(path) for kind, path in originals.items()}:
             raise RuntimeError('Workbench app pair changed during capture; retry refresh')
-    for name in ('pt8_workbench_provider.py', 'pt8_workbench_runner.py', 'pt8_workloads.py', 'pt8_acceptance.py', 'workbench_git.py'):
-        target = generation / 'provider/scripts' / name
-        copy_checked(source / 'scripts' / name, target)
-    for name in ('wire.py', 'workbench_provider.py'):
-        copy_checked(source / 'simulation' / name, generation / 'provider/simulation' / name)
+    for directory, names in (
+        ('integration/workbench', ('pt8_workbench_provider.py', 'pt8_workbench_runner.py', 'workbench_paths.py', 'wire.py', 'workbench_provider.py')),
+        ('tooling_acceptance/workloads/controls', ('pt8_workloads.py',)),
+        ('tooling_acceptance/variants/controls', ('pt8_acceptance.py',)),
+        ('scripts', ('workbench_git.py',))):
+        for name in names:
+            copy_checked(source / directory / name, generation / 'provider' / directory / name)
     # Reuse the proven two-job private-root shim, with its existing variable contract.
-    copy_checked(source / 'scripts/pt8_workbench_dune.py', generation / 'tool-bin/dune')
+    copy_checked(source / 'integration/workbench/pt8_workbench_dune.py', generation / 'tool-bin/dune')
     real_git = Path(inputs['git'])
     with real_git.open('rb') as stream:
         if stream.read(4) != b'\x7fELF':
@@ -491,6 +510,7 @@ def capture(args, store, prior, receipt, migration=None):
     (generation / 'tool-bin/git').chmod(0o555)
     write(generation / 'tool-bin/git-context.json', git_context)
     env = dict(OCAMLPATH=str(asic / 'lib') + ':' + str(sdk / 'lib'),
+               OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1',
                HARDCAML_ASIC_GENERATION=str(asic),
                PATH=str(generation / 'tool-bin') + ':' + str(asic / 'bin') + ':' + os.environ['PATH'],
                PT8_PROJECT_ROOT=str(store / 'project'), PT8_REAL_DUNE=inputs['dune'],
@@ -515,17 +535,17 @@ def capture(args, store, prior, receipt, migration=None):
     python = inputs['python']
     commands = {
         'controlled-fifo': [str(generation / 'provider/test_provider.exe'), '--simulator', str(generation / 'provider/fifo_sim.exe')],
-        'pt8-memory-workloads': [python, '-B', str(generation / 'provider/scripts/pt8_workbench_provider.py'),
+        'pt8-memory-workloads': [python, '-B', str(generation / 'provider/integration/workbench/pt8_workbench_provider.py'),
             '--generation', str(asic), '--producer-root', str(store / 'project'),
             '--emitter', str(generation / 'provider/workload_emit.exe'), '--model-root', str(models)],
     }
-    provider = [python, '-B', str(generation / 'provider/simulation/workbench_provider.py'),
+    provider = [python, '-B', str(generation / 'provider/integration/workbench/workbench_provider.py'),
                 '--manifest', str(generation / 'manifest.json')]
     def config(kind, values):
         (generation / 'config' / ('hardcaml-workbench-' + kind + '.sexp')).write_text(sexp(values) + '\n')
     config('simulation', [('schema_version', 1), ('provider_executable', provider[0]), ('provider_args', provider[1:]),
                           ('discovery_timeout_seconds', 30), ('run_timeout_seconds', 600)])
-    config('preparation', [('schema_version', 1), ('build_target', 'bin/project.exe'),
+    config('preparation', [('schema_version', 1), ('build_target', 'asics/fifo_demo/cli/project.exe'),
                            ('results_root', str(store / 'preparation-results')), ('timeout_seconds', 600)])
     tools = Path(inputs['toolchain'])
     config('asic', [('schema_version', 1), ('project_executable', str(generation / 'provider/project.exe')),
@@ -552,7 +572,7 @@ def capture(args, store, prior, receipt, migration=None):
                     setup=dict(source=str(Path(__file__).resolve()), captured=str(generation / 'setup/workbench_dev.py'),
                                sha256=sha(generation / 'setup/workbench_dev.py')),
                     config_files={config_name(kind): sha(generation / 'config' / config_name(kind)) for kind in CONFIGS})
-    manifest.update(source_owner_root=str(source_owner(prior, args.root).resolve(strict=True)),
+    manifest.update(source_layout=SOURCE_LAYOUT, source_owner_root=str(source_owner(prior, args.root).resolve(strict=True)),
                     source_dirs=list(SOURCE_DIRS), source_roots=list(SOURCE_FILES + SOURCE_DIRS),
                     source_migration=migration, git_context=git_context)
     write(generation / 'manifest.json', manifest)
@@ -571,6 +591,9 @@ def capture(args, store, prior, receipt, migration=None):
 
 
 def prepare(args, store):
+    require_source_layout(store / 'project')
+    if (store / 'manifest.json').exists():
+        require_source_layout(store / 'project', json.loads((store / 'manifest.json').read_text()))
     store.mkdir(parents=True, exist_ok=True)
     # Read-only idempotent prepare also works while the daemon retains its shared
     # startup fence. Only an actual capture/switch requires exclusive ownership.
@@ -688,6 +711,10 @@ def main(argv=None):
     store = args.store.absolute() if args.store else args.root / '.dev/workbench-development'
     if store.exists() and store.resolve() != store:
         raise RuntimeError('store must be a fixed canonical path, not a symlink')
+    # Diagnose before acquiring locks or recovering an old publication journal.
+    require_source_layout(store / 'project')
+    if (store / 'manifest.json').exists():
+        require_source_layout(store / 'project', json.loads((store / 'manifest.json').read_text()))
     if args.command == 'prepare':
         prepare(args, store)
     elif args.command == 'status':

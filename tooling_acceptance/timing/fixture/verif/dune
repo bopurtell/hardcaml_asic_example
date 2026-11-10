@@ -1,0 +1,4 @@
+(test
+ (name core_test)
+ (modules core_test)
+ (libraries hardcaml timing_specimen))

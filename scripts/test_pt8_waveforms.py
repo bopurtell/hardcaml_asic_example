@@ -10,6 +10,12 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'integration/workbench'))
+sys.path.insert(0, str(ROOT / 'tooling_acceptance/workloads/controls'))
+sys.path.insert(0, str(ROOT / 'tooling_acceptance/variants/controls'))
 
 import pt8_workloads as producer
 import pt8_workbench_provider as provider

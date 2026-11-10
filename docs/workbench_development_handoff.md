@@ -1,5 +1,12 @@
 # Stable Workbench development session — B handoff
 
+> **Historical layout / status (2026-11-10):** source directories and setup scopes
+> below precede the ownership migration. The final selected-generation snapshot is
+> also older than the currently observed selection. For current source paths and
+> fresh-session instructions, read [Workbench continuation](migration_plans/workbench_continuation.md).
+> Existing stores were preserved; the additive import commands below do not migrate
+> moved directories. The current helper requires an explicit new store for that case.
+
 **Git-context correction:** the running owner's earlier capture exports unsafe
 global Git repository selectors. It has NOT been refreshed/stopped by B. See
 [`workbench_git_context_handoff.md`](workbench_git_context_handoff.md) for the

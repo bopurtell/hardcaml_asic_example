@@ -1,0 +1,9 @@
+(copy_files ../fixture/timing_specimen.ml)
+(copy_files ../fixture/timing_specimen.mli)
+(copy_files ../basic/timing_project.ml)
+
+(executable
+ (name named_timing_cli)
+ (modules named_timing_cli named_catalog timing_project timing_specimen)
+ (libraries core hardcaml hardcaml_asic)
+ (preprocess (pps ppx_jane ppx_hardcaml)))

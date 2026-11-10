@@ -1,0 +1,24 @@
+(executable
+ (name export_trace)
+ (libraries core fifo_test_support fifo_asic)
+ (preprocess (pps ppx_jane)))
+
+(rule
+ (alias runtest)
+ (deps check_bundle.py replay.v ../../../../README.md
+  ../../../../dune-project ../../../../asic-dependency.json
+  (source_tree ../../../../ip/controlled_fifo/rtl)
+  (source_tree ../../rtl) (source_tree ../../project) (source_tree ../../cli))
+ (action
+  (run python3 %{dep:check_bundle.py} --emitter %{exe:../../cli/project.exe}
+   --exporter %{exe:export_trace.exe} --source-root ../../../.. --bench %{dep:replay.v})))
+
+(rule
+ (alias acceptance-strict)
+ (deps check_bundle.py replay.v ../../../../README.md
+  ../../../../dune-project ../../../../asic-dependency.json
+  (source_tree ../../../../ip/controlled_fifo/rtl)
+  (source_tree ../../rtl) (source_tree ../../project) (source_tree ../../cli))
+ (action
+  (run python3 %{dep:check_bundle.py} --require-rtl --emitter %{exe:../../cli/project.exe}
+   --exporter %{exe:export_trace.exe} --source-root ../../../.. --bench %{dep:replay.v})))

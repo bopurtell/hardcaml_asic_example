@@ -1,5 +1,9 @@
 # C PT8 handoff / coordination
 
+> **Historical execution paths:** active variant/workload source now lives under
+> `tooling_acceptance/`. See the [layout map](repository_layout.md); retained
+> execution identities and evidence paths below remain unchanged.
+
 2026-10-29. Preparation is complete in C-owned paths. Read
 `docs/pt8_acceptance.md` and `variants/README.md` for the adapter/oracle contract.
 Pre-capture preservation: 108,338 files and 65 symlinks unchanged.

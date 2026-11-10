@@ -1,0 +1,5 @@
+(executable
+ (name timing_cli)
+ (modules timing_cli timing_project)
+ (libraries core hardcaml hardcaml_asic timing_specimen)
+ (preprocess (pps ppx_jane)))

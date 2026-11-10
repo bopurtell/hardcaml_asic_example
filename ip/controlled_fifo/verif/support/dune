@@ -1,0 +1,4 @@
+(library
+ (name fifo_test_support)
+ (libraries core)
+ (preprocess (pps ppx_jane)))

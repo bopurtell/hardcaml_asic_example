@@ -8,6 +8,32 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import zlib
+
+
+def fixture_repository(root):
+    """Independent, empty Git baseline without invoking Git mutation commands.
+
+    Source-observation fixtures must also work in copied Workbench projects,
+    where there is no parent checkout metadata to discover.
+    """
+    metadata = root / '.git'
+    (metadata / 'objects').mkdir(parents=True)
+    (metadata / 'refs/heads').mkdir(parents=True)
+
+    def obj(kind, data):
+        raw = kind.encode() + b' ' + str(len(data)).encode() + b'\0' + data
+        identity = hashlib.sha1(raw).hexdigest()
+        path = metadata / 'objects' / identity[:2] / identity[2:]
+        path.parent.mkdir(exist_ok=True)
+        path.write_bytes(zlib.compress(raw))
+        return identity
+
+    tree = obj('tree', b'')
+    commit = obj('commit', ('tree ' + tree + '\nauthor Fixture <fixture@example.test> 1 +0000\n'
+        'committer Fixture <fixture@example.test> 1 +0000\n\nPreparation fixture\n').encode())
+    (metadata / 'HEAD').write_text('ref: refs/heads/fixture\n')
+    (metadata / 'refs/heads/fixture').write_text(commit + '\n')
 
 
 def main():
@@ -15,6 +41,8 @@ def main():
     p.add_argument('--memory', type=Path, required=True)
     p.add_argument('--fifo', type=Path, required=True)
     p.add_argument('--provider', type=Path, required=True)
+    p.add_argument('--provider-receipt', type=Path,
+                   help='installed generation receipt (default: provider parent prefix/receipt.json)')
     p.add_argument('--source-root', type=Path, required=True)
     p.add_argument('--output-dir', type=Path)
     p.add_argument('--historical-dir', type=Path,
@@ -40,8 +68,7 @@ def main():
         text = run([provider, 'preparation-inspect', attempt, '--json', *extra], code)
         return json.loads(text) if code == 0 else text
 
-    # A fixture under the checkout can be observed by read-only Git commands.
-    # No fixture repository or Git mutation is necessary.
+    # All mutable evidence belongs to this source root's private scratch space.
     with tempfile.TemporaryDirectory(prefix='prepare-check-', dir=root / '.dev') as tmp:
         work = Path(tmp)
         store = work / 'attempts'
@@ -122,10 +149,11 @@ def main():
 
         # Inventory gates: every project-owned constructor/CLI dependency is observed.
         for prep, required in (
-                (saved['exact-synthesis'][1], {'memory/dune', 'memory/program_memory.ml',
-                                             'memory/memory_cli.ml'}),
-                (fifo_prep, {'bin/dune', 'bin/project.ml', 'asic/project.ml',
-                            'asic/fifo_asic.ml', 'asic/tt_wrapper.ml', 'lib/controlled_fifo.ml'})):
+                (saved['exact-synthesis'][1], {'asics/program_memory/project/dune',
+                    'asics/program_memory/project/program_memory.ml', 'asics/program_memory/project/memory_cli.ml'}),
+                (fifo_prep, {'asics/fifo_demo/cli/dune', 'asics/fifo_demo/cli/project.ml',
+                    'asics/fifo_demo/project/project.ml', 'asics/fifo_demo/project/fifo_asic.ml',
+                    'asics/fifo_demo/rtl/tt_wrapper.ml', 'ip/controlled_fifo/rtl/controlled_fifo.ml'})):
             paths = {x['path'] for x in prep['source']['inputs']}
             check('source inventory gate: ' + prep['resources']['project'], required <= paths)
 
@@ -135,6 +163,7 @@ def main():
             path = fixture / item['path']
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(root / item['path'], path)
+        fixture_repository(fixture)
 
         def preview(operation='synthesis', selection='exact', depth=256):
             return json.loads(run([memory, 'preview', '--source-root', fixture,
@@ -153,7 +182,7 @@ def main():
         small, large = preview(selection='flops', depth=128), preview(selection='flops')
         check('actual circuit identity changes', small['circuit_identity'] != large['circuit_identity']
               and small['source_identity'] == large['source_identity'])
-        readme = fixture / 'memory/README.md'
+        readme = fixture / 'asics/program_memory/README.md'
         readme.write_bytes(readme.read_bytes() + b'\nPreparation source observation fixture.\n')
         changed = preview()
         check('observed source identity changes independently', changed['source_identity'] != base['source_identity']
@@ -245,7 +274,7 @@ def main():
                 inspect(output / label)
             (output / 'launches.json').write_text(json.dumps(launches, indent=2) + '\n')
             (output / 'historical-compatibility.json').write_text(json.dumps(compatibility, indent=2) + '\n')
-            receipt = root / '.dev/asic-prepare/current/receipt.json'
+            receipt = a.provider_receipt or provider.parent.parent / 'receipt.json'
             report = dict(checks=checks, count=len(checks), provider=json.loads(run([provider, '--version', '--json'])),
                           capture=json.loads(receipt.read_text()),
                           executables={str(x): hashlib.sha256(x.read_bytes()).hexdigest() for x in (memory, fifo)},

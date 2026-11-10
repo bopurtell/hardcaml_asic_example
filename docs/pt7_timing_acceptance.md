@@ -1,5 +1,8 @@
 # PT.7 independent example: actual bounded synthesis and STA
 
+> **Historical execution record:** active timing source is now grouped under
+> `tooling_acceptance/timing/`. See the [layout map](repository_layout.md).
+
 **Final-candidate update:** actual corrected bit and scalar native acceptance is
 complete in [pt7_timing_final.md](pt7_timing_final.md), with native coverage still
 unavailable. The results below remain the original provider's historical scalar

@@ -1,0 +1,20 @@
+(copy_files ../../asics/fifo_demo/project/flow_profiles.ml)
+(copy_files ../../asics/fifo_demo/project/flow_catalog.ml)
+
+(library
+ (name pt8_adapter)
+ (wrapped false)
+ (modules variant_memory flow_profiles flow_catalog)
+ (libraries core hardcaml hardcaml_asic)
+ (preprocess (pps ppx_jane ppx_hardcaml)))
+
+(executable
+ (name variant_cli)
+ (modules variant_cli)
+ (libraries pt8_adapter core hardcaml_asic hardcaml_asic.execution)
+ (preprocess (pps ppx_jane)))
+
+(executable
+ (name review_api)
+ (modules review_api)
+ (libraries hardcaml_asic.execution))

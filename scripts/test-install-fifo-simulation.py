@@ -95,7 +95,7 @@ class InstallerTests(unittest.TestCase):
 
     def test_explicit_build_targets_and_budget(self):
         build_dir = self.root / 'build'
-        outputs = build_dir / 'default/simulation'
+        outputs = build_dir / 'default/ip/controlled_fifo/verif/simulation'
         outputs.mkdir(parents=True)
         for name in ('test_provider.exe', 'fifo_sim.exe'):
             target = outputs / name
@@ -106,7 +106,8 @@ class InstallerTests(unittest.TestCase):
                           '--with-switch', str(self.provider)])
         command = build.call_args.args[0]
         self.assertIn('-j3', command)
-        self.assertEqual(command[-2:], ['simulation/test_provider.exe', 'simulation/fifo_sim.exe'])
+        self.assertEqual(command[-2:], ['ip/controlled_fifo/verif/simulation/test_provider.exe',
+                                       'ip/controlled_fifo/verif/simulation/fifo_sim.exe'])
         build.assert_called_once()
 
     def test_config_race_does_not_replace_concurrent_edit(self):

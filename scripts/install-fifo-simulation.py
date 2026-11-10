@@ -14,7 +14,7 @@ import uuid
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'simulation'))
+sys.path.insert(0, str(ROOT / 'integration/workbench'))
 from wire import parse, record, sexp
 
 
@@ -163,9 +163,11 @@ def install(a, root, config, manifest, old, ownership, timeouts):
     if a.build:
         subprocess.run([str(a.with_switch.resolve(strict=True)), 'dune', 'build', '--root', str(root),
                         '--build-dir', str(a.build_dir.resolve()), '-j' + str(a.jobs),
-                        'simulation/test_provider.exe', 'simulation/fifo_sim.exe'], check=True)
-        binary = a.build_dir / 'default/simulation/fifo_sim.exe'
-        provider = a.build_dir / 'default/simulation/test_provider.exe'
+                        'ip/controlled_fifo/verif/simulation/test_provider.exe',
+                        'ip/controlled_fifo/verif/simulation/fifo_sim.exe'], check=True,
+                       env=dict(os.environ, OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1'))
+        binary = a.build_dir / 'default/ip/controlled_fifo/verif/simulation/fifo_sim.exe'
+        provider = a.build_dir / 'default/ip/controlled_fifo/verif/simulation/test_provider.exe'
     else:
         binary = a.simulator
         provider = a.provider

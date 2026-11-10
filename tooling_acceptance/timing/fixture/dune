@@ -1,0 +1,5 @@
+(library
+ (name timing_specimen)
+ (modules timing_specimen)
+ (libraries hardcaml)
+ (preprocess (pps ppx_hardcaml)))

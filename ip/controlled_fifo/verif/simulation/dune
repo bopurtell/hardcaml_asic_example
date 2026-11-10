@@ -1,0 +1,11 @@
+(executable
+ (name fifo_sim)
+ (modules fifo_sim)
+ (libraries core hardcaml controlled_fifo fifo_test_support)
+ (preprocess (pps ppx_jane)))
+
+(executable
+ (name test_provider)
+ (modules test_provider)
+ (libraries core hardcaml_workbench_provider)
+ (preprocess (pps ppx_jane)))

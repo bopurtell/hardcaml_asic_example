@@ -1,0 +1,4 @@
+(test
+ (name memory_test)
+ (libraries core hardcaml hardcaml_asic program_memory)
+ (preprocess (pps ppx_jane)))

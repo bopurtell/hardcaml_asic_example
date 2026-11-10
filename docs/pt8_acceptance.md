@@ -1,5 +1,9 @@
 # PT8 independent example — preparation and acceptance procedure
 
+> **Historical procedure:** source/driver paths below predate the ownership
+> migration. Use the [current layout map](repository_layout.md); preserve the
+> original retained evidence and captured identities.
+
 2026-10-29. C owns only `variants/`, `scripts/pt8*`, `docs/pt8*`,
 `acceptance/pt8`, `.dev/asic-pt8` and `_build_pt8`. The pre-work seal is
 `acceptance/pt8/preservation-before.json`; it covers tracked sources, untracked

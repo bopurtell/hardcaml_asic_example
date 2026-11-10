@@ -12,7 +12,7 @@ import tempfile
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'simulation'))
+sys.path.insert(0, str(ROOT / 'integration/workbench'))
 from wire import parse, sexp
 
 
@@ -23,7 +23,7 @@ def main():
     args = parser.parse_args()
     commands = [
         [str(args.provider.resolve()), '--simulator', str(args.simulator.resolve())],
-        [sys.executable, '-B', str(ROOT / 'simulation/provider.py'),
+        [sys.executable, '-B', str(ROOT / 'ip/controlled_fifo/verif/simulation/provider.py'),
          '--simulator', str(args.simulator.resolve())],
     ]
     discovery = [subprocess.run(c + ['discover', '--protocol-version', '1'],

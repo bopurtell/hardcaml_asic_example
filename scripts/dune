@@ -3,12 +3,15 @@
  (deps check_prepare.py
        (env_var HARDCAML_ASIC_PREPARATION_PROVIDER)
        (env_var HARDCAML_ASIC_PREPARATION_SOURCE_ROOT)
-       (source_tree ../memory) (source_tree ../lib) (source_tree ../asic)
-       ../dune-project ../asic-dependency.json ../README.md ../bin/dune ../bin/project.ml)
+       (source_tree ../asics/program_memory/project) ../asics/program_memory/README.md
+       (source_tree ../ip/controlled_fifo/rtl)
+       (source_tree ../asics/fifo_demo/project) (source_tree ../asics/fifo_demo/rtl)
+       ../dune-project ../asic-dependency.json ../README.md
+       ../asics/fifo_demo/cli/dune ../asics/fifo_demo/cli/project.ml)
  (action
   (run python3 -B %{dep:check_prepare.py}
-   --memory %{exe:../memory/memory_cli.exe}
-   --fifo %{exe:../bin/project.exe}
+   --memory %{exe:../asics/program_memory/project/memory_cli.exe}
+   --fifo %{exe:../asics/fifo_demo/cli/project.exe}
    --provider %{env:HARDCAML_ASIC_PREPARATION_PROVIDER=hardcaml-asic-flow}
    --source-root %{env:HARDCAML_ASIC_PREPARATION_SOURCE_ROOT=.})))
 
@@ -18,9 +21,17 @@
   (action (run python3 %{dep:test_asic_dependency.py})))
 
 (rule
+ (alias ownership-layout-test)
+ (deps test_ownership_layout.py test_workbench_dev.py workbench_dev.py workbench_git.py
+       (source_tree ../integration/workbench) (source_tree ../tooling_acceptance)
+       (source_tree ../ip/controlled_fifo) (source_tree ../asics)
+       ../dune-project ../asic-dependency.json ../README.md ../bootstrap.sh)
+ (action (run python3 -B %{dep:test_ownership_layout.py})))
+
+(rule
  (alias runtest)
  (deps check_project_cli.py)
- (action (run python3 %{dep:check_project_cli.py} %{exe:../bin/project.exe})))
+ (action (run python3 %{dep:check_project_cli.py} %{exe:../asics/fifo_demo/cli/project.exe})))
 
 (rule
  (alias runtest)
@@ -30,16 +41,20 @@
 (rule
  (alias runtest)
  (deps test_project_routing.py (env_var HARDCAML_ASIC_TEST_PROVIDER)
-       (env_var HARDCAML_ASIC_TEST_EVIDENCE) (source_tree ../lib) (source_tree ../asic)
-       ../dune-project ../asic-dependency.json ../README.md ../bin/dune ../bin/project.ml)
- (action (run python3 %{dep:test_project_routing.py} %{exe:../bin/project.exe}
-               %{exe:../acceptance/export_trace.exe} ..)))
+       (env_var HARDCAML_ASIC_TEST_EVIDENCE) (source_tree ../ip/controlled_fifo/rtl)
+       (source_tree ../asics/fifo_demo/project) (source_tree ../asics/fifo_demo/rtl)
+       ../dune-project ../asic-dependency.json ../README.md
+       ../asics/fifo_demo/cli/dune ../asics/fifo_demo/cli/project.ml)
+ (action (run python3 %{dep:test_project_routing.py} %{exe:../asics/fifo_demo/cli/project.exe}
+               %{exe:../asics/fifo_demo/verif/bundle/export_trace.exe} ..)))
 
 (rule
  (alias headless-test)
   (deps headless_flow.py test_headless_flow.py test_project_routing.py
         (env_var HARDCAML_ASIC_TEST_PROVIDER) (env_var HARDCAML_ASIC_ENGINE_FIXTURES)
-        (source_tree ../lib) (source_tree ../asic)
-       ../dune-project ../asic-dependency.json ../README.md ../bin/dune ../bin/project.ml)
- (action (run python3 -B %{dep:test_headless_flow.py} %{exe:../bin/project.exe}
-              %{exe:../acceptance/export_trace.exe} ..)))
+        (source_tree ../ip/controlled_fifo/rtl) (source_tree ../asics/fifo_demo/project)
+        (source_tree ../asics/fifo_demo/rtl)
+       ../dune-project ../asic-dependency.json ../README.md
+       ../asics/fifo_demo/cli/dune ../asics/fifo_demo/cli/project.ml)
+ (action (run python3 -B %{dep:test_headless_flow.py} %{exe:../asics/fifo_demo/cli/project.exe}
+              %{exe:../asics/fifo_demo/verif/bundle/export_trace.exe} ..)))

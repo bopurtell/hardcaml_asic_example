@@ -1,0 +1,12 @@
+(executable
+ (name fifo_test)
+ (libraries core hardcaml controlled_fifo fifo_test_support)
+ (preprocess (pps ppx_jane)))
+
+(rule
+ (alias runtest)
+ (action (run %{exe:fifo_test.exe} --directed)))
+
+(rule
+ (alias runtest)
+ (action (run %{exe:fifo_test.exe} --seed 20261012 --cycles 20000)))

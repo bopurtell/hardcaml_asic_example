@@ -1,5 +1,9 @@
 # PT.7 timing specimen — preparation handoff
 
+> **Layout note (2026-11-10):** the active timing family now lives under
+> `tooling_acceptance/timing/`. See the [layout map](repository_layout.md).
+> Commands and source hashes below remain records of the historical execution.
+
 2026-10-28. **Historical preparation handoff.** Subsequent actual bounded
 synthesis/STA acceptance is in [pt7_timing_acceptance.md](pt7_timing_acceptance.md),
 including the open generated bus-port lookup bug. The remainder records the

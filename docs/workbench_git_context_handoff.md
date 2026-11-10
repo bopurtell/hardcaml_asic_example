@@ -1,5 +1,9 @@
 # Scoped development Git context — B correction handoff
 
+> **Historical handoff:** the scoped-Git rationale remains relevant, but source
+> paths and store-upgrade commands below describe the pre-2026-11-10 layout.
+> Start with [current Workbench continuation](migration_plans/workbench_continuation.md).
+
 2026-11-05. Implements Workbench `docs/development_git_context_recovery.md`.
 The owner's active stable daemon/store are NOT refreshed, stopped or patched.
 Old failed operations/bundles and all revision validation remain unchanged.

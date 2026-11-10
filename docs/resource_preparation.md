@@ -1,5 +1,10 @@
 # Project-owned resource preparation
 
+> **Source-layout note:** current CLIs are `asics/fifo_demo/cli/project.exe` and
+> `asics/program_memory/project/memory_cli.exe`. Use the
+> [layout map](repository_layout.md) for other source paths below. Resource
+> preparation is distinct from Workbench source-build/bundle generation.
+
 Both CLIs link `hardcaml_asic.execution`. They select and construct ordinary OCaml
 projects inside `Preparation_service.run_cli`'s closure, after durable allocation,
 then call `Project.prepare_resources ~on_phase`. The provider owns schema,
