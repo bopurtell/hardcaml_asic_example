@@ -1,0 +1,81 @@
+{
+  "cases": [
+    {
+      "case": "missing",
+      "exit_code": 1,
+      "expected_diagnostic": "get_nets hc_pt7_capture_first: expected exactly one object, got 0",
+      "diagnostic_found": true,
+      "zero_application_records": true,
+      "no_complete": true,
+      "sdc_unchanged": true,
+      "input_hashes": {
+        "mapped.v": "1474f73bcfe4fd9202795335efd41353358be28493fb93abb69ef4ca8d9755ba",
+        "top.sdc": "e69f0b8f6b762eed5364cdd5f8d85294be5ddf06882463d2953c2d62f2077e96",
+        "cells.lib": "34163f3e7de9f854afac57332ba06f1739b78e7ac35660a8a5ddd39c570124ad",
+        "driver.tcl": "65d5140365ee91bf1ee6b6c1cf82609ffbb3c3c40da14f7cb4fb7df762de536a"
+      }
+    },
+    {
+      "case": "ambiguous",
+      "exit_code": 1,
+      "expected_diagnostic": "Q driver for capture_first: expected exactly one object, got 2",
+      "diagnostic_found": true,
+      "zero_application_records": true,
+      "no_complete": true,
+      "sdc_unchanged": true,
+      "input_hashes": {
+        "mapped.v": "4d16c44e94cfcdc11a953aa9fbfdf42895d9fe85385997e98a579e9aabf60a0b",
+        "top.sdc": "e69f0b8f6b762eed5364cdd5f8d85294be5ddf06882463d2953c2d62f2077e96",
+        "cells.lib": "34163f3e7de9f854afac57332ba06f1739b78e7ac35660a8a5ddd39c570124ad",
+        "driver.tcl": "65d5140365ee91bf1ee6b6c1cf82609ffbb3c3c40da14f7cb4fb7df762de536a"
+      }
+    },
+    {
+      "case": "wrong-master",
+      "exit_code": 1,
+      "expected_diagnostic": "unsupported mapped master sg13cmos5l_buf_1 for capture_first",
+      "diagnostic_found": true,
+      "zero_application_records": true,
+      "no_complete": true,
+      "sdc_unchanged": true,
+      "input_hashes": {
+        "mapped.v": "2d5bb11a193df0198d05c46c9027573612e7fff360e87bccca387f6d855924aa",
+        "top.sdc": "e69f0b8f6b762eed5364cdd5f8d85294be5ddf06882463d2953c2d62f2077e96",
+        "cells.lib": "34163f3e7de9f854afac57332ba06f1739b78e7ac35660a8a5ddd39c570124ad",
+        "driver.tcl": "65d5140365ee91bf1ee6b6c1cf82609ffbb3c3c40da14f7cb4fb7df762de536a"
+      }
+    },
+    {
+      "case": "wrong-interstage",
+      "exit_code": 1,
+      "expected_diagnostic": "mapped interstage data differs for capture_second",
+      "diagnostic_found": true,
+      "zero_application_records": true,
+      "no_complete": true,
+      "sdc_unchanged": true,
+      "input_hashes": {
+        "mapped.v": "fe8eff43eacaec61cff09b11ddbf09c7a461a0fa7c1d16867c16c58a52ea9790",
+        "top.sdc": "e69f0b8f6b762eed5364cdd5f8d85294be5ddf06882463d2953c2d62f2077e96",
+        "cells.lib": "34163f3e7de9f854afac57332ba06f1739b78e7ac35660a8a5ddd39c570124ad",
+        "driver.tcl": "65d5140365ee91bf1ee6b6c1cf82609ffbb3c3c40da14f7cb4fb7df762de536a"
+      }
+    },
+    {
+      "case": "wrong-capture-scope",
+      "exit_code": 1,
+      "expected_diagnostic": "capture is not one first stage",
+      "diagnostic_found": true,
+      "zero_application_records": true,
+      "no_complete": true,
+      "sdc_unchanged": false,
+      "input_hashes": {
+        "mapped.v": "8d6459a26eda8a65c1a9d729ff2031cb675295f8449e5421f446e30822984e0b",
+        "top.sdc": "5a9930e1100b781946797e1f853f55539a8b0c49b5944b96f87f92bc6fd1ddae",
+        "cells.lib": "34163f3e7de9f854afac57332ba06f1739b78e7ac35660a8a5ddd39c570124ad",
+        "driver.tcl": "65d5140365ee91bf1ee6b6c1cf82609ffbb3c3c40da14f7cb4fb7df762de536a"
+      }
+    }
+  ],
+  "unconstrained_control": "native-unconstrained-02-launch/stdout.log",
+  "scope": "controlled diagnostics, not valid positive audit evidence"
+}

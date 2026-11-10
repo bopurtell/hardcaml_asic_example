@@ -1,0 +1,66 @@
+{
+  "baseline": {
+    "exit_code": 0,
+    "capture_witness_present": {
+      "min": false,
+      "max": false
+    },
+    "scope": "bounded exact external capture witness only; no exhaustive effect claim"
+  },
+  "capture-removed": {
+    "exit_code": 0,
+    "capture_witness_present": {
+      "min": true,
+      "max": true
+    },
+    "scope": "bounded exact external capture witness only; no exhaustive effect claim"
+  },
+  "capture-broad": {
+    "exit_code": 0,
+    "capture_witness_present": {
+      "min": false,
+      "max": false
+    },
+    "scope": "bounded exact external capture witness only; no exhaustive effect claim"
+  },
+  "capture-setup-only": {
+    "exit_code": 0,
+    "capture_witness_present": {
+      "min": true,
+      "max": false
+    },
+    "scope": "bounded exact external capture witness only; no exhaustive effect claim"
+  },
+  "masking": {
+    "exit_code": 0,
+    "capture_witness_present": {
+      "min": false,
+      "max": false
+    },
+    "scope": "bounded exact external capture witness only; no exhaustive effect claim"
+  },
+  "no-input-delay": {
+    "exit_code": 0,
+    "capture_witness_present": {
+      "min": false,
+      "max": false
+    },
+    "scope": "bounded exact external capture witness only; no exhaustive effect claim"
+  },
+  "no-output-delay": {
+    "exit_code": 0,
+    "capture_witness_present": {
+      "min": false,
+      "max": false
+    },
+    "scope": "bounded exact external capture witness only; no exhaustive effect claim"
+  },
+  "no-clock": {
+    "exit_code": 0,
+    "capture_witness_present": {
+      "min": false,
+      "max": false
+    },
+    "scope": "bounded exact external capture witness only; no exhaustive effect claim"
+  }
+}

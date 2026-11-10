@@ -1,0 +1,79 @@
+PASS directed: edges=7330 pushes=4730 pops=4458 rejected_pushes=156 rejected_pops=994 clears=102 disabled=35 pre_counts[0,1,15,16]=[1232,1296,1203,1245]
+PASS memory Flops Simulation: 1792 edges, full load/read/overwrite, latency-one, disabled read/write hold
+PASS memory Flops Implementation: 1792 edges, full load/read/overwrite, latency-one, disabled read/write hold
+PASS memory Exact Simulation: 1792 edges, full load/read/overwrite, latency-one, disabled read/write hold
+PASS policy: Flops/Exact inventory in both modes; optional intent; unsupported 128x16 rejected in both modes; no fallback; TT resolution
+PASS seed=20261012 cycles=20000: edges=20017 pushes=11016 pops=9625 rejected_pushes=2933 rejected_pops=3843 clears=208 disabled=1993 pre_counts[0,1,15,16]=[2962,4559,920,4224]
+PASS wrapper directed: edges=7330 (pre/post-edge mask, reveal, OE and ignored-input probes)
+PASS wrapper seed=20261012 cycles=20000: edges=20017 (pre/post-edge mask, reveal, OE and ignored-input probes)
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.449s
+
+OK
+PASS resolution: exact TT ports, TT6x4/CMOS5L, 48MHz, min/max delays, template settings, 24 pins, empty resource inventory; separate Simulation
+PASS project catalog: facade, discovery roundtrips, explicit defaults/selection, duplicate and invalid declaration rejection
+PASS CLI: declaration-only description without Git/PATH; help and invalid commands; no output created
+PASS synthetic author=committer=Bundle test <bundle@test.invalid>; message=baseline; no remotes
+PASS bundle: repeat bytes, inventory/hashes, identity, target/config/SDC, 2 tracked edits, 5 failure cases
+synthesis: PASS RTL edges=11429 (directed + seed=20261012 cycles=4096)
+/home/wayne/devel/jane/hardcaml_asic_example/_build_pt5b/default/acceptance/replay.v:59: $finish called at 148567000 (1ps)
+synthesis: PASS negative oracle rejected corrupted response at trace=0
+simulation: PASS RTL edges=11429 (directed + seed=20261012 cycles=4096)
+/home/wayne/devel/jane/hardcaml_asic_example/_build_pt5b/default/acceptance/replay.v:59: $finish called at 148567000 (1ps)
+simulation: PASS negative oracle rejected corrupted response at trace=0
+test_bounded_jobs_reach_build_install_and_validation (__main__.JobsTests.test_bounded_jobs_reach_build_install_and_validation) ... ok
+test_invalid_jobs_fail_before_any_source_or_store_access (__main__.JobsTests.test_invalid_jobs_fail_before_any_source_or_store_access) ... ok
+test_activation_repeated_and_status_stale_environment (__main__.SetupTests.test_activation_repeated_and_status_stale_environment) ... ok
+test_bundle_publication_requires_signature_and_private_fields (__main__.SetupTests.test_bundle_publication_requires_signature_and_private_fields) ... ok
+test_catalog_surface_required_before_build (__main__.SetupTests.test_catalog_surface_required_before_build) ... ok
+test_concurrent_capture_change_is_rejected (__main__.SetupTests.test_concurrent_capture_change_is_rejected) ... ok
+test_explicit_manual_override_removal_is_recorded_and_carried_forward (__main__.SetupTests.test_explicit_manual_override_removal_is_recorded_and_carried_forward) ... ok
+test_failures_preserve_publication (__main__.SetupTests.test_failures_preserve_publication) ... ok
+test_grouped_layout_failures_and_mixed_layouts_refused (__main__.SetupTests.test_grouped_layout_failures_and_mixed_layouts_refused) ... ok
+test_grouped_layout_validates_source_and_install (__main__.SetupTests.test_grouped_layout_validates_source_and_install) ... ok
+test_lock_contention (__main__.SetupTests.test_lock_contention) ... ok
+test_missing_revision_api_and_wrong_source (__main__.SetupTests.test_missing_revision_api_and_wrong_source) ... ok
+test_old_recorded_api_allows_new_development_and_refusal_preserves_selection (__main__.SetupTests.test_old_recorded_api_allows_new_development_and_refusal_preserves_selection) ... ok
+test_process_errors_and_cli_requires_explicit_mode (__main__.SetupTests.test_process_errors_and_cli_requires_explicit_mode) ... ok
+test_project_api_requires_all_new_signatures (__main__.SetupTests.test_project_api_requires_all_new_signatures) ... ok
+test_recorded_ignores_dirty_and_untracked_development_includes_them (__main__.SetupTests.test_recorded_ignores_dirty_and_untracked_development_includes_them) ... ok
+test_release_build_uses_capture_without_duplicate_root (__main__.SetupTests.test_release_build_uses_capture_without_duplicate_root) ... ok
+test_snapshot_does_not_follow_later_source_edits (__main__.SetupTests.test_snapshot_does_not_follow_later_source_edits) ... ok
+test_source_cli_owner_must_be_an_actual_native_stanza (__main__.SetupTests.test_source_cli_owner_must_be_an_actual_native_stanza) ... ok
+test_store_inside_source_is_excluded_and_foreign_pointer_preserved (__main__.SetupTests.test_store_inside_source_is_excluded_and_foreign_pointer_preserved) ... ok
+test_store_safety_and_read_only_status (__main__.SetupTests.test_store_safety_and_read_only_status) ... ok
+test_supported_cli_contracts_only_and_refusal_preserves_selection (__main__.SetupTests.test_supported_cli_contracts_only_and_refusal_preserves_selection) ... ok
+test_unsafe_symlink_rejected (__main__.SetupTests.test_unsafe_symlink_rejected) ... ok
+test_validate_source_reports_uncompiled_and_does_not_publish (__main__.SetupTests.test_validate_source_reports_uncompiled_and_does_not_publish) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 3.667s
+
+OK
+test_default_dispatch_json_and_current_source (__main__.RoutingTests.test_default_dispatch_json_and_current_source) ... ok
+test_default_emit_reuse_and_corruption (__main__.RoutingTests.test_default_emit_reuse_and_corruption) ... ok
+test_directory_paths_preserve_symlink_parent_traversal (__main__.RoutingTests.test_directory_paths_preserve_symlink_parent_traversal) ... ok
+test_endpoint_dispatch_uniqueness_and_complete_output (__main__.RoutingTests.test_endpoint_dispatch_uniqueness_and_complete_output) ... ok
+test_endpoint_errors_before_emission (__main__.RoutingTests.test_endpoint_errors_before_emission) ... ok
+test_endpoint_explicit_bundle_spaces_overrides_and_exit (__main__.RoutingTests.test_endpoint_explicit_bundle_spaces_overrides_and_exit) ... ok
+test_executable_paths_preserve_symlink_parent_traversal (__main__.RoutingTests.test_executable_paths_preserve_symlink_parent_traversal) ... ok
+test_explicit_roots_and_exact_output (__main__.RoutingTests.test_explicit_roots_and_exact_output) ... ok
+test_missing_and_old_provider_no_emission (__main__.RoutingTests.test_missing_and_old_provider_no_emission) ... ok
+test_named_capability_negotiation_before_publication (__main__.RoutingTests.test_named_capability_negotiation_before_publication) ... ok
+test_named_installed_native_early_reference_and_request (__main__.RoutingTests.test_named_installed_native_early_reference_and_request) ... ok
+test_named_profiles_and_pure_preview (__main__.RoutingTests.test_named_profiles_and_pure_preview) ... ok
+test_named_public_routing_launchspec_paths_and_process (__main__.RoutingTests.test_named_public_routing_launchspec_paths_and_process) ... ok
+test_named_stale_source_catalog_profile_and_endpoint_no_output (__main__.RoutingTests.test_named_stale_source_catalog_profile_and_endpoint_no_output) ... ok
+test_named_timeout_validation_and_runtime_identity (__main__.RoutingTests.test_named_timeout_validation_and_runtime_identity) ... ok
+test_named_typed_request_and_invalid_parameters (__main__.RoutingTests.test_named_typed_request_and_invalid_parameters) ... ok
+test_overrides_exit_and_explicit_bundle (__main__.RoutingTests.test_overrides_exit_and_explicit_bundle) ... ok
+test_provider_signal_is_preserved (__main__.RoutingTests.test_provider_signal_is_preserved) ... ok
+test_supported_contracts_preserve_human_json_routing (__main__.RoutingTests.test_supported_contracts_preserve_human_json_routing) ... ok
+test_unknown_or_malformed_contract_refused_before_emission (__main__.RoutingTests.test_unknown_or_malformed_contract_refused_before_emission) ... ok
+test_validation_and_readonly (__main__.RoutingTests.test_validation_and_readonly) ... ok
+
+----------------------------------------------------------------------
+Ran 21 tests in 7.505s
+
+OK

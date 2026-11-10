@@ -1,0 +1,7 @@
+; Retained run/bundle/source copies are data, not nested build targets.
+(data_only_dirs *)
+
+(executable
+ (name native_reader)
+ (modules native_reader)
+ (libraries hardcaml_asic.execution yojson))

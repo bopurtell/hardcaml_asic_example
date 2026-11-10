@@ -1,0 +1,13 @@
+{
+  "confirmed_by": "A",
+  "confirmation_source": "User's explicit final READY handoff and A runtime handoff verification closeout, 2026-10-28",
+  "runtime_handoff": "/home/wayne/devel/jane/hardcaml_asic/docs/development/pt7-named-runtime-handoff.md",
+  "preflight": 6,
+  "probe": 6,
+  "synthesis": 6,
+  "publication": 6,
+  "analysis": 6,
+  "sta_threads": 1,
+  "pnr_allocation": 0,
+  "execution_policy": "sequential within six total build OR EDA jobs"
+}

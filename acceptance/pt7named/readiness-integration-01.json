@@ -1,0 +1,23 @@
+{
+  "status": "blocked_before_eda",
+  "acceptance_completed": false,
+  "preliminary_generation": "79dba53255354b6eb5dcb63d8b0c3da1",
+  "completed": ["isolated_provider_capture", "consumer_build", "preservation_verification"],
+  "failed": "public_named_plan",
+  "failure_receipt": "area-prepare-integration-01/plan/command.json",
+  "failure_diagnostic": "Invalid_argument: object fields do not match versioned schema",
+  "provider_blocker": "lib/methodology_plan.ml:163-185 closed manifest decoder omits timing_intent and timing_native_coverage",
+  "runtime_bound_confirmation_received": false,
+  "eda_launched": 0,
+  "pnr_launched": 0,
+  "allocation_jobs": 6,
+  "sta_threads_required": 1,
+  "switch": "5.2.0+ox",
+  "build_locks": ["/tmp/opencode/asic-pt7-build.lock", "/tmp/opencode/example-pt7-build.lock"],
+  "preservation_receipt": "preservation-integration.json",
+  "preserved_files_verified": 16084,
+  "preservation_failures": [],
+  "final_capture_required_after_provider_ready": true,
+  "closure_scope": "path_bound",
+  "named_relocation_claimed": false
+}

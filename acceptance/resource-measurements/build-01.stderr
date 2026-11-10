@@ -1,0 +1,6 @@
+File "simulation/dune", line 10, characters 17-44:
+10 |  (libraries core hardcaml_workbench_provider)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Library "hardcaml_workbench_provider" not found.
+-> required by _build_pt5b/default/simulation/test_provider.exe
+-> required by alias simulation/all

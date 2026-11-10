@@ -1,20 +1,3 @@
-(executable
- (name export_trace)
- (libraries core fifo_test_support fifo_asic)
- (preprocess (pps ppx_jane)))
-
-(rule
- (alias runtest)
-  (deps check_bundle.py replay.v ../README.md ../dune-project ../asic-dependency.json
-  (source_tree ../lib) (source_tree ../asic) (source_tree ../bin))
- (action
-   (run python3 %{dep:check_bundle.py} --emitter %{exe:../bin/project.exe}
-   --exporter %{exe:export_trace.exe} --source-root .. --bench %{dep:replay.v})))
-
-(rule
- (alias acceptance-strict)
-  (deps check_bundle.py replay.v ../README.md ../dune-project ../asic-dependency.json
-  (source_tree ../lib) (source_tree ../asic) (source_tree ../bin))
- (action
-   (run python3 %{dep:check_bundle.py} --require-rtl --emitter %{exe:../bin/project.exe}
-   --exporter %{exe:export_trace.exe} --source-root .. --bench %{dep:replay.v})))
+; Authored harnesses live with their owners; all retained evidence (including
+; pt7named, resource-inspector, and resource-measurements) must stay unbuilt.
+(data_only_dirs *)

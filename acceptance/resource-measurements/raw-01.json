@@ -1,0 +1,20 @@
+{
+  "scope": "PT.5b raw capture verification only; no public measurement acceptance",
+  "command": [
+    "scripts/check_resource_measurements.py",
+    "--verify-capture",
+    "acceptance/resource-measurements/accepted-live-01",
+    "--receipt",
+    "acceptance/resource-measurements/raw-01.json"
+  ],
+  "script_sha256": "30c9a296e4ad000590d9b8e5e8e78f56ba5587c356f1f75471322bd501ef956e",
+  "capture": "acceptance/resource-measurements/accepted-live-01",
+  "capture_receipt_sha256": "b46b7153511dd133acb038f76015bdd01fad6615a66c6e1e1d7a0de06a84b811",
+  "tests_run": 4,
+  "failures": 0,
+  "errors": 0,
+  "skipped": [],
+  "unittest_output": "test_accepted_identity_and_unmodified_base (__main__.CaptureAcceptance.test_accepted_identity_and_unmodified_base) ... ok\ntest_capture_closure_and_original_sources (__main__.CaptureAcceptance.test_capture_closure_and_original_sources) ... ok\ntest_raw_geometry_and_gross_rectangle_oracles (__main__.CaptureAcceptance.test_raw_geometry_and_gross_rectangle_oracles) ... ok\ntest_sampled_path_raw_oracles_and_units (__main__.CaptureAcceptance.test_sampled_path_raw_oracles_and_units) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.516s\n\nOK\n",
+  "protected_unchanged": true,
+  "public_acceptance": "blocked_pending_integrated_provider_and_handoffs"
+}

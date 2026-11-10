@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "mode": "development",
+  "source": "/home/wayne/devel/jane/hardcaml_asic",
+  "record": {
+    "schema": 1,
+    "package": "hardcaml_asic",
+    "repository": "https://github.com/LeEmperor/hardcaml_asic.git",
+    "revision": "1714764859274f80a9f5ad207421a04601824e99"
+  },
+  "observed_base_revision": "e46bfd7609e0b119ad74a8b412a3e866da5297de",
+  "generation": "/home/wayne/devel/jane/hardcaml_asic_example/.dev/asic-pt5b/generations/4848a66eeda54751b12d645ee9bcd5c4",
+  "snapshot_sha256": "03b13eb7dd2b2918594754c19b41cbc5fe5042f309a9f2f91eae221b6aed4f4f",
+  "differs_from_recorded_snapshot": true,
+  "captured_differs_from_observed_base": true,
+  "removed_library_paths": [],
+  "source_state": "captured bytes; not an atomic checkout or a clean-tree claim",
+  "identity_scope": "local refresh receipt, NOT P6.5 source stamp",
+  "refreshed_at": "2026-10-27T18:01:53.142564+00:00"
+}

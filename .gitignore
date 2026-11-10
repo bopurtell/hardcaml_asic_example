@@ -4,3 +4,10 @@ __pycache__/
 *.py[cod]
 /_flow_tools/
 /_flow_results/
+
+# Retained acceptance attempts: prune raw trees, keep phase-level helpers visible.
+# Already-tracked curated evidence remains tracked. See acceptance/README.md.
+/acceptance/*/*/
+# Large phase-level preservation inventories are retained locally too.
+/acceptance/pt8/preservation-before.json
+/acceptance/pt8-workloads/preservation-baseline.json
