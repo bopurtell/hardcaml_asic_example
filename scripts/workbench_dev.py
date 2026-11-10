@@ -513,8 +513,11 @@ def capture(args, store, prior, receipt, migration=None):
                OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1',
                HARDCAML_ASIC_GENERATION=str(asic),
                PATH=str(generation / 'tool-bin') + ':' + str(asic / 'bin') + ':' + os.environ['PATH'],
-               PT8_PROJECT_ROOT=str(store / 'project'), PT8_REAL_DUNE=inputs['dune'],
-               GIT_OPTIONAL_LOCKS='0', GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull)
+                PT8_PROJECT_ROOT=str(store / 'project'), PT8_REAL_DUNE=inputs['dune'],
+                GIT_OPTIONAL_LOCKS='0', GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull)
+    task_limit = getattr(args, 'synthesis_task_limit', None)
+    if task_limit is not None:
+        env['HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT'] = str(task_limit)
     build = store / 'builds' / receipt.name
     argv = [inputs['dune'], 'build', '--root', str(source), '--build-dir', str(build), '-j2', *TARGETS]
     # Both dependency environments are read-only; no install/refresh of ASIC or SDK.
@@ -693,6 +696,8 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command', required=True)
     prep = sub.add_parser('prepare', allow_abbrev=False)
     prep.add_argument('--refresh', action='store_true')
+    prep.add_argument('--synthesis-task-limit', type=int, choices=(6,),
+                      help='opt in to total container tasks<=6 for fresh synthesis/report collection')
     prep.add_argument('--import-missing-source', action='store_true', help='explicitly add entirely missing approved authored source entries')
     prep.add_argument('--update-owned-support', action='store_true', help='explicitly update only baseline-matching B-owned support files')
     for kind in ('client', 'daemon'):

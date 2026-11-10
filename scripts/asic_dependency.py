@@ -102,7 +102,10 @@ def safe_name(name):
 
 def included(name, source, store):
     p = safe_name(name)
-    return not (set(p.parts) & EXCLUDED or (store and (source / name).is_relative_to(store)))
+    # These existing private Dune roots are build products, including broken
+    # install symlinks, not authored inputs. Never traverse or repair them.
+    private_build = p.parts[0] in {'_build_pt8_workbench', '_build_pt8_workloads'}
+    return not (private_build or set(p.parts) & EXCLUDED or (store and (source / name).is_relative_to(store)))
 
 
 def committed(source, revision):

@@ -36,6 +36,25 @@ CATALOG_APIS = {
 }
 
 
+class CaptureBuildRootsTests(unittest.TestCase):
+    def test_private_dune_roots_do_not_enter_captured_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'execution').mkdir()
+            (root / 'execution/source.ml').write_text('authored')
+            names = ['execution/source.ml']
+            for name in ('_build_pt8_workbench', '_build_pt8_workloads'):
+                (root / name).mkdir()
+                link = root / name / 'broken-install-link'
+                link.symlink_to('missing')
+                names.append(str(link.relative_to(root)))
+            with patch.object(dep, 'git', return_value=('\0'.join(names) + '\0').encode()):
+                entries = dep.development(root, root / 'store')
+            self.assertEqual(set(entries), {'execution/source.ml'})
+            self.assertTrue(all((root / n / 'broken-install-link').is_symlink()
+                                for n in ('_build_pt8_workbench', '_build_pt8_workloads')))
+
+
 class SetupTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="asic setup's ")
