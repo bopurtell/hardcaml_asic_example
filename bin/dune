@@ -1,4 +1,0 @@
-(executable
- (name project)
- (libraries unix core hardcaml_asic hardcaml_asic.execution fifo_asic yojson)
- (preprocess (pps ppx_jane)))

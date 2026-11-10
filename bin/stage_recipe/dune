@@ -1,4 +1,0 @@
-(executable
- (name stage_recipe)
- (libraries core hardcaml_asic)
- (preprocess (pps ppx_jane)))

@@ -1,13 +1,6 @@
-/_build/
-/_build_sram/
-/_build_prepare/
-/_build_pt5/
-/_build_pt5b/
-/_build_headless/
-/_build_delivery/
-/_build_namedflow_real/
-/_build_namedflow_race/
+/_build*/
 /.dev/
-/scripts/__pycache__/
+__pycache__/
+*.py[cod]
 /_flow_tools/
 /_flow_results/

@@ -1,8 +1,0 @@
-(copy_files ../timing/timing_specimen.ml)
-(copy_files ../timing/timing_specimen.mli)
-
-(executable
- (name physical_timing_cli)
- (modules physical_timing_cli physical_project timing_specimen)
- (libraries core hardcaml hardcaml_asic)
- (preprocess (pps ppx_jane ppx_hardcaml)))
