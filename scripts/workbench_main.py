@@ -27,6 +27,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'integration/workbench'))
 from wire import parse, record, sexp
+import config_location
 sys.path.insert(0, str(ROOT / 'scripts'))
 from workbench_git import clean_environment
 
@@ -231,7 +232,7 @@ def paths(root):
 
 
 def companion(root, kind):
-    return root / ('hardcaml-workbench-' + kind + '.sexp')
+    return config_location.selected(root, 'hardcaml-workbench-' + kind + '.sexp')
 
 
 def metadata(store):
@@ -429,39 +430,47 @@ def publish(root, store, dry_run=False):
     owned_path = store / 'published.json'
     owned = json.loads(regular(owned_path)) if owned_path.exists() else None
     expected = owned['config_sha256'] if owned else value['baseline_sha256']
-    previous = {kind: regular(companion(root, kind), missing=True) for kind in KINDS}
+    targets = {kind: config_location.destinations(root, 'hardcaml-workbench-' + kind + '.sexp')
+               for kind in KINDS}
+    previous = {kind: regular(targets[kind][0], missing=True) for kind in KINDS}
     for kind, data in previous.items():
         if (None if data is None else sha(data)) != expected[kind]:
             raise RuntimeError('unknown root companion edit; refusing overwrite: ' + kind)
     if dry_run:
         return dict(ready=True, published=False, project_root=str(root),
-                    config_sha256=value['config_sha256'], previous_sha256=expected)
+                    config_sha256=value['config_sha256'], previous_sha256=expected,
+                    config_paths={kind: list(map(str, paths)) for kind, paths in targets.items()})
     receipt = store / 'publications' / uuid.uuid4().hex
     receipt.mkdir(parents=True)
     for kind, data in previous.items():
         if data is not None:
             write(receipt / companion(root, kind).name, data)
-    pending = dict(previous_sha256=expected, config_sha256=value['config_sha256'], backup=str(receipt))
+    pending = dict(previous_sha256=expected, config_sha256=value['config_sha256'], backup=str(receipt),
+                   config_paths={kind: list(map(str, paths)) for kind, paths in targets.items()})
     json_write(store / 'publication-pending.json', pending)
     changed = []
     try:
         ensure_stopped(root, store, inspect_root=True)
         for kind in KINDS:
-            if regular(companion(root, kind), missing=True) != previous[kind]:
+            if config_location.destinations(root, 'hardcaml-workbench-' + kind + '.sexp') != targets[kind]:
+                raise RuntimeError('companion locations changed during publication: ' + kind)
+            if any(regular(path, missing=True) != previous[kind] for path in targets[kind]):
                 raise RuntimeError('companion changed during publication: ' + kind)
-            write(companion(root, kind), regular(Path(value['selection']) / 'config' / companion(root, kind).name))
-            changed.append(kind)
+            data = regular(Path(value['selection']) / 'config' / targets[kind][0].name)
+            for path in targets[kind]:
+                write(path, data)
+                changed.append((kind, path))
         json_write(owned_path, pending)
     except BaseException:
         # Restore only bytes still owned by this transaction. Unknown concurrent
         # edits leave the journal for explicit recovery instead of being erased.
-        for kind in reversed(changed):
-            if sha(regular(companion(root, kind))) != value['config_sha256'][kind]:
+        for kind, path in reversed(changed):
+            if sha(regular(path)) != value['config_sha256'][kind]:
                 raise RuntimeError('concurrent edit; publication journal retained')
             if previous[kind] is None:
-                companion(root, kind).unlink()
+                path.unlink()
             else:
-                write(companion(root, kind), previous[kind])
+                write(path, previous[kind])
         (store / 'publication-pending.json').unlink()
         raise
     (store / 'publication-pending.json').unlink()

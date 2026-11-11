@@ -16,6 +16,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'integration/workbench'))
 from wire import parse, record, sexp
+import config_location
 from workbench_provider import (ACCEPTANCE_FILES, SOURCE_DIRS, SOURCE_FILES, SOURCE_LAYOUT, SUITE_PATHS, SUITES,
                                 environment, inventory, sha, source_drift)
 from workbench_git import clean_environment
@@ -27,6 +28,7 @@ TARGETS = ('ip/controlled_fifo/verif/simulation/test_provider.exe', 'ip/controll
 IMPORT_GROUPS = {name: (name,) for name in ('ip/controlled_fifo/verif/cyclesim', 'asics/fifo_demo/verif',
     'tooling_acceptance/timing', 'bootstrap.sh')}
 OWNED_SUPPORT = ('integration/workbench/workbench_provider.py', 'scripts/workbench_dev.py',
+                  'integration/workbench/config_location.py',
                  'scripts/test_workbench_dev.py', 'scripts/test_pt8_waveforms.py',
                   'scripts/workbench_git.py')
 
@@ -165,6 +167,18 @@ def config_name(kind):
     return 'hardcaml-workbench-' + kind + '.sexp'
 
 
+def config_paths(project, kind):
+    # The older private-store symlink publication has a separate, verified
+    # explicit-refresh recovery path. Never extend that exception to .workbench.
+    legacy = project / config_name(kind)
+    if legacy.is_symlink():
+        common = project / '.workbench' / legacy.name
+        if config_location.read_regular(common) is not None:
+            raise RuntimeError('legacy symlink configuration coexists with common configuration')
+        return (legacy,)
+    return config_location.destinations(project, config_name(kind))
+
+
 def unsettled(store):
     if (store / 'publication.json').exists():
         raise RuntimeError('interrupted configuration publication; launch/verification blocked. '
@@ -229,8 +243,10 @@ def recover_publication(store):
         raise RuntimeError('selection edited during interrupted publication; refusing automatic overwrite')
     # Validate ALL files and rollback bytes before replacing ANYTHING. Unknown
     # edits leave the journal intact for manual reconciliation, never overwritten.
-    for kind in CONFIGS:
-        name = config_name(kind)
+    allowed_names = {prefix + config_name(kind) for prefix in ('', '.workbench/') for kind in CONFIGS}
+    if set(journal['old_configs']) - allowed_names or set(journal['new_configs']) != set(journal['old_configs']):
+        raise RuntimeError('unowned publication configuration paths')
+    for name in journal['old_configs']:
         old = journal['old_configs'][name]
         new = dict(type='regular', sha256=journal['new_configs'][name])
         if config_state(store / 'project' / name) not in (old, new):
@@ -239,8 +255,7 @@ def recover_publication(store):
             raise RuntimeError('rollback config checksum mismatch: ' + name)
     # First restore the old selection so restored legacy links name old bytes.
     select_generation(store, journal['old_generation'])
-    for kind in CONFIGS:
-        name = config_name(kind)
+    for name in journal['old_configs']:
         path = store / 'project' / name
         old = journal['old_configs'][name]
         if config_state(path) == old:
@@ -253,6 +268,7 @@ def recover_publication(store):
             os.replace(temporary, path)
         else:
             replace_regular(path, (receipt / 'rollback' / name).read_bytes())
+        sync_dir(path.parent)
     sync_dir(store / 'project')
     os.replace(journal_path, receipt / 'rolled-back-publication.json')
     sync_dir(receipt)
@@ -264,21 +280,25 @@ def publish(store, prior, manifest, receipt):
     rollback = receipt / 'rollback'
     rollback.mkdir()
     old_configs = {}
-    for kind in CONFIGS:
-        name = config_name(kind)
+    targets = {str(path.relative_to(store / 'project')): kind for kind in CONFIGS
+               for path in config_paths(store / 'project', kind)}
+    for name in targets:
         path = store / 'project' / name
         state = config_state(path)
         if prior is None and state['type'] != 'missing':
             raise RuntimeError('refusing unowned initial configuration: ' + str(path))
         old_configs[name] = state
         if state['type'] != 'missing':
+            (rollback / name).parent.mkdir(parents=True, exist_ok=True)
             with (rollback / name).open('xb') as stream:
                 stream.write(path.read_bytes())
                 stream.flush()
                 os.fsync(stream.fileno())
+            sync_dir((rollback / name).parent)
     sync_dir(rollback)
     journal = dict(schema_version=1, store=str(store), old_generation=prior['generation'] if prior else None,
-                   new_generation=manifest['generation'], old_configs=old_configs, new_configs=manifest['config_files'])
+                   new_generation=manifest['generation'], old_configs=old_configs,
+                   new_configs={name: manifest['config_files'][config_name(kind)] for name, kind in targets.items()})
     # Publish a complete, fsynced journal atomically: a crash while writing JSON
     # must not leave an unreadable recovery marker before any config changed.
     intent = receipt / 'publication-intent.json'
@@ -287,12 +307,11 @@ def publish(store, prior, manifest, receipt):
     os.link(intent, store / 'publication.json')
     sync_dir(store)
     try:
-        for kind in CONFIGS:
-            name = config_name(kind)
+        for name, kind in targets.items():
             path = store / 'project' / name
             if config_state(path) != old_configs[name]:
                 raise RuntimeError('private configuration changed during publication: ' + name)
-            data = (Path(manifest['generation']) / 'config' / name).read_bytes()
+            data = (Path(manifest['generation']) / 'config' / config_name(kind)).read_bytes()
             replace_regular(path, data)
         select_generation(store, manifest['generation'])
         verify(manifest, allow_pending=True)
@@ -393,7 +412,7 @@ def verify(manifest, *, configs=True, allow_legacy=False, allow_pending=False):
     if project.resolve() != project:
         raise RuntimeError('private project path contains a symlink')
     for kind in CONFIGS:
-        config = project / config_name(kind)
+        config = config_paths(project, kind)[0]
         expected = store / 'selected/config' / config.name
         if config.is_symlink():
             if not allow_legacy or 'config_files' in manifest:

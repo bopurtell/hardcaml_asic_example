@@ -16,6 +16,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'integration/workbench'))
 from wire import parse, record, sexp
+import config_location
 
 
 def digest(data):
@@ -128,7 +129,7 @@ def main(argv=None, *, root=ROOT):
                    help='explicitly adopt these exact edited config bytes, with verified prior ownership and persistent backup')
     a = p.parse_args(argv)
     root = root.resolve(strict=True)
-    config = root / 'hardcaml-workbench-simulation.sexp'
+    config = config_location.selected(root, 'hardcaml-workbench-simulation.sexp')
     manifest = root / '.dev/fifo-simulation-install.json'
     old = config.read_bytes() if config.exists() else None
     ownership = manifest.read_bytes() if manifest.exists() else None
@@ -153,8 +154,10 @@ def main(argv=None, *, root=ROOT):
 
 
 def install(a, root, config, manifest, old, ownership, timeouts):
+    targets = config_location.destinations(root, config.name)
     def unchanged():
-        if (config.read_bytes() if config.exists() else None) != old:
+        if (config_location.destinations(root, config.name) != targets
+                or any(config_location.read_regular(path) != old for path in targets)):
             raise RuntimeError('configuration changed during install; refusing edit')
         if (manifest.read_bytes() if manifest.exists() else None) != ownership:
             raise RuntimeError('ownership changed during install; refusing edit')
@@ -199,6 +202,7 @@ def install(a, root, config, manifest, old, ownership, timeouts):
         sha256={f.name: digest(f.read_bytes()) for f in generation.iterdir()})
     durable_write(receipt / 'ownership.json', json_bytes(installed))
     transaction = dict(status='prepared', config=str(config), generation=str(generation),
+        config_paths=list(map(str, targets)),
         adoption_sha256=a.adopt_config_sha256,
         previous_config_sha256=digest(old) if old is not None else None,
         previous_ownership_sha256=digest(ownership) if ownership is not None else None,
@@ -208,12 +212,26 @@ def install(a, root, config, manifest, old, ownership, timeouts):
     pending = manifest.parent / ('configuration-' + generation.name + '.pending')
     durable_write(pending, contents)
     unchanged()
-    if old is None:
-        os.link(pending, config)
-    else:
-        os.replace(pending, config)
-    pending.unlink(missing_ok=True)
-    sync_directory(root)
+    changed = []
+    try:
+        for path in targets:
+            if old is None:
+                os.link(pending, path)
+            else:
+                replace_bytes(path, contents)
+            changed.append(path)
+            sync_directory(path.parent)
+    except Exception:
+        for path in reversed(changed):
+            if config_location.read_regular(path) != contents:
+                raise RuntimeError('concurrent configuration edit; inspect prepared receipt')
+            if old is None:
+                path.unlink()
+            else:
+                replace_bytes(path, old)
+        raise
+    finally:
+        pending.unlink(missing_ok=True)
     replace_bytes(manifest, json_bytes(installed))
     transaction['status'] = 'published'
     replace_bytes(receipt / 'receipt.json', json_bytes(transaction))
