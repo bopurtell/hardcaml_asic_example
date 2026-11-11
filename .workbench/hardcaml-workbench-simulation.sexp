@@ -1,0 +1,1 @@
+(("schema_version" "1") ("provider_executable" "/usr/bin/python3.12") ("provider_args" ("-B" "/home/wayne/devel/jane/hardcaml_asic_example/integration/workbench/checkout_provider.py" "--manifest" "/home/wayne/devel/jane/hardcaml_asic_example/.dev/workbench-main/simulation/manifest.json")) ("discovery_timeout_seconds" "30") ("run_timeout_seconds" "600"))
