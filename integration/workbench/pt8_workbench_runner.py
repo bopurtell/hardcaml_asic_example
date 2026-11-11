@@ -21,7 +21,8 @@ class Cancelled(Exception):
 
 
 class Runner:
-    def __init__(self, generation, emitter, model_root, progress=lambda stage: None, root=ROOT):
+    def __init__(self, generation, emitter, model_root, progress=lambda stage: None, root=ROOT,
+                 output_root=None):
         global ROOT, STORE
         ROOT = Path(root).resolve(strict=True)
         STORE = ROOT / '.dev/asic-pt8-workbench'
@@ -29,6 +30,7 @@ class Runner:
         self.emitter = Path(emitter).resolve(strict=True)
         self.model_root = Path(model_root).resolve(strict=True)
         self.progress = progress
+        self.output_root = Path(output_root) if output_root is not None else STORE / 'workloads'
         self.child = None
 
     def cancel(self, signum, frame):
@@ -75,7 +77,7 @@ class Runner:
     def run(self, case, seed, attempt):
         if case not in CASES or seed != SEED:
             raise ValueError('only flops256/exact256 and fixed declarative seed 34097 are supported')
-        root = STORE / 'workloads'
+        root = self.output_root
         root.mkdir(parents=True, exist_ok=True)
         output = root / (case + '-' + uuid.uuid4().hex)
         output.mkdir()

@@ -56,8 +56,9 @@ def run(args):
                     ('completed', {'emit': 0, 'simulate': 1, 'inspect': 2}[stage]),
                     ('total', [3]), ('unit_', 'producer stages')]])
             try:
+                options = {} if getattr(args, 'output_root', None) is None else {'output_root': args.output_root}
                 output, reference, passed = Runner(args.generation, args.emitter,
-                    args.model_root, progress, args.producer_root).run(case, sel['seed'], req['attempt_id'])
+                    args.model_root, progress, args.producer_root, **options).run(case, sel['seed'], req['attempt_id'])
                 artifact_id = case + '-result-reference'
                 path = artifact_id + '.json'
                 shutil.copyfile(output / 'result-reference.json', args.artifact_dir / path)
@@ -103,6 +104,8 @@ def main():
     parser.add_argument('--producer-root', type=Path, required=True)
     parser.add_argument('--emitter', type=Path, required=True)
     parser.add_argument('--model-root', type=Path, required=True)
+    parser.add_argument('--output-root', type=Path,
+                        help='persistent producer evidence directory (defaults to historical private store)')
     parser.add_argument('operation', choices=['discover', 'run'])
     parser.add_argument('--protocol-version', choices=['1'], required=True)
     parser.add_argument('--request', type=Path)

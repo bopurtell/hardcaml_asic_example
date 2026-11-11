@@ -168,10 +168,13 @@ def validate_catalog(value):
 def environment(manifest):
     # Do not propagate an inherited daemon/shell repository selector into tools
     # probing collateral or other repositories. Also reject legacy global captures.
-    return clean_environment(dict(os.environ, **manifest['environment'], PYTHONDONTWRITEBYTECODE='1'))
+    return clean_environment({**os.environ, **manifest['environment'], 'PYTHONDONTWRITEBYTECODE': '1'})
 
 
-def main(argv=None):
+def main(argv=None, *, manifest_check=None, drift_check=source_drift,
+         environment_factory=environment,
+         stale_guidance='run scripts/workbench_dev.py prepare --refresh in the example checkout'
+                        ' (same --store for private verification)'):
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('--manifest', type=Path, required=True)
     parser.add_argument('operation', choices=('discover', 'run'))
@@ -182,10 +185,12 @@ def main(argv=None):
     original = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(original)
     manifest = json.loads(bounded_read(args.manifest, 8 * LIMIT))
+    if manifest_check is not None:
+        manifest_check(manifest, args.operation)
     if manifest.get('source_layout') != SOURCE_LAYOUT:
         raise ValueError('legacy source layout; explicitly create a new --store for the migrated ownership layout; '
                          'existing copies/history remain unchanged')
-    env = environment(manifest)
+    env = environment_factory(manifest)
     if args.operation == 'discover':
         suites = []
         for suite in SUITES:
@@ -208,11 +213,10 @@ def main(argv=None):
     suite = selection['suite']
     if not isinstance(suite, str) or suite not in SUITES:
         raise ValueError('unknown suite')
-    drift = source_drift(manifest, suite)
+    drift = drift_check(manifest, suite)
     if drift:
         raise ValueError('stale ' + suite + ' source capture (' + ', '.join(drift[:8]) +
-                         '); run scripts/workbench_dev.py prepare --refresh in the example checkout' +
-                         ' (same --store for private verification)')
+                         '); ' + stale_guidance)
     # Strip ONLY the router prefix. All operation/request/events/artifact argv is original.
     for index, token in enumerate(original):
         if token == '--manifest':
