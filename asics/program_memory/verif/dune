@@ -1,4 +1,19 @@
 (test
  (name memory_test)
+ (modules memory_test)
  (libraries core hardcaml hardcaml_asic program_memory)
+  (preprocess (pps ppx_jane)))
+
+(executable
+ (name segmented_consumer)
+ (modules segmented_consumer)
+ (libraries unix core hardcaml_asic hardcaml_asic.execution program_memory yojson)
  (preprocess (pps ppx_jane)))
+
+(rule
+ (alias segmented-preparation)
+ (deps check_segmented_preparation.py segmented_consumer.ml dune
+       ../../../dune-project ../../../asic-dependency.json
+       ../README.md (source_tree ../project))
+ (action (run python3 -B %{dep:check_segmented_preparation.py}
+   %{exe:segmented_consumer.exe} ../../..)))
