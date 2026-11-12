@@ -32,6 +32,12 @@ Refresh/install is an explicit separate action; ordinary builds do not provision
 EDA tools. Activate the selected provider in the shell that runs Dune. Building
 the native simulation adapter additionally requires `hardcaml_workbench_provider`.
 
+`asic-dependency.json` selects committed provider
+`4b6bb60562c0133db9e3ccc6b183736e5658a3f0` for explicit **recorded** refreshes.
+See [dependency selection and validation](docs/dependency_commands.md#current-recorded-dependency).
+Changing this record does not upgrade an installed generation or the Workbench
+selection; those continue to use their existing receipts and executable paths.
+
 ```sh
 # After selecting and activating a compatible installed dependency:
 dune build -j6 asics/fifo_demo/cli/project.exe

@@ -2,6 +2,49 @@
 > [layout map](repository_layout.md) and [current README](../README.md) when
 > adapting them; recorded installations and results remain historical.
 
+## Current recorded dependency
+
+`asic-dependency.json` now selects committed provider
+`4b6bb60562c0133db9e3ccc6b183736e5658a3f0` (2026-11-12). Its committed bytes pass
+the installer's read-only renamed API, Project, bundle publication, catalog/plan
+and native `flow_cli` ownership checks, including the grouped provider layout.
+
+Check the source without building, installing or selecting a generation:
+
+```sh
+python3 -B scripts/asic_dependency.py validate-source \
+  --source ../hardcaml_asic \
+  --revision 4b6bb60562c0133db9e3ccc6b183736e5658a3f0
+python3 -B scripts/asic_dependency.py status --json
+```
+
+The source check reports `compiled: false`; it does not certify a fresh installed
+package. A later deliberate recorded refresh with `--source ../hardcaml_asic`
+and `--jobs 2` requires that exact commit locally, an active compatible OxCaml/Hardcaml
+environment, Dune >= 3.17, ocamlfind and the provider's OCaml dependencies
+(including Core, Yojson, Cryptokit, Zarith, Spawn and the PPXs). Refresh builds
+and installs the captured package in a private generation, checks the installed
+interfaces/runtime payload/native helpers, compiles both public-library probes,
+and requires exact CLI4 with `namedflow1=true` before publishing `current`.
+It does not install missing compiler dependencies or provision EDA collateral.
+Run it as a separate operation within the workspace's total 20-job budget.
+
+Read-only checks on 2026-11-12 found Dune 3.24.2 and all the OCaml packages listed
+above in switch `5.2.0+ox`. The pinned provider's provisioning script passed
+`--check --offline --no-container` against this checkout's `_flow_tools`: support
+tools, PDK, LibreLane/precheck environments and environment paths matched the lock.
+Container readiness was explicitly skipped; Nix was checked for availability only.
+No fresh recorded build, install, compiler probe or EDA run was performed.
+
+Updating the record alone leaves all installed generations, receipts, activation
+scripts and Workbench selectors intact. Status can therefore report
+`baseline_mismatch` for an older selection; that is expected until an explicit
+refresh. In particular, the everyday Workbench launcher retains its separate
+generation documented in [workbench_main.md](workbench_main.md#installed-selections-and-persistence).
+Even a later `.dev/asic` refresh does not update that launcher selection.
+
+## Development refresh and historical validation
+
 Run from `hardcaml_asic_example` in your existing `5.2.0+ox` shell. After a
 development refresh has succeeded, select it **in that same shell**:
 
@@ -56,7 +99,8 @@ Provider full forced tests and 53 installed-prefix tests passed. Installed human
 and complete JSON inspection of retained placement/observation and accepted
 finalization matched domain results; SHA-256 verified 531 retained files unchanged.
 The provider's [full closeout](../../hardcaml_asic/docs/development/human-readable-flow-output.md#slice-3--independent-integration-2026-10-13)
-records exact paths, commands and output. The recorded dependency pin remains
+records exact paths, commands and output. At that historical validation the
+recorded dependency pin was
 `1714764859274f80a9f5ad207421a04601824e99`. Re-source in your own shell:
 
 ```bash
@@ -172,15 +216,16 @@ After activation, library and CLI resolved that generation; exact
 `dune runtest . -j 20` and `dune build @all -j 20` exited 0, including compilation
 of the stage-recipe companion. These are local receipt facts, not a release stamp.
 
-Recorded mode selects exactly the revision in `asic-dependency.json`. The current
-`1714764859274f80a9f5ad207421a04601824e99` lacks the required Project API and is
-rejected before publication; use development mode until the owner adopts a
-compatible committed revision. Once that record is updated, the command is:
+Recorded mode selects exactly the revision in `asic-dependency.json`, now
+`4b6bb60562c0133db9e3ccc6b183736e5658a3f0`. The former `171476...` pin lacked the
+required Project API; the current committed source passes that gate. A fresh
+recorded installation still requires the build/link/runtime validation described
+above. To explicitly install and select it later:
 
 ```bash
 python3 scripts/asic_dependency.py refresh \
   --source /home/wayne/devel/jane/hardcaml_asic \
-  --mode recorded
+  --mode recorded --jobs 2
 
 source .dev/asic/current/activate.sh
 ```

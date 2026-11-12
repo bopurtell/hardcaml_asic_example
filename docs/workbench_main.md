@@ -101,6 +101,13 @@ companion configs live in immutable-by-convention selections under
 `.dev/workbench-main/installs/`; `install.json` atomically selects a matching pair.
 Earlier selections remain available.
 
+The root `asic-dependency.json` now records provider
+`4b6bb60562c0133db9e3ccc6b183736e5658a3f0` for future explicit recorded refreshes.
+That source expectation does not replace the ASIC generation above or the
+dependency selected in `install.json`. A reviewed launcher dependency upgrade
+requires an explicit `prepare --update --asic-generation /absolute/generation`
+and subsequent publication; see [dependency commands](dependency_commands.md#current-recorded-dependency).
+
 All session state belongs to `.dev/workbench-main/`:
 
 ```

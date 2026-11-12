@@ -510,6 +510,56 @@ class SetupTests(unittest.TestCase):
         self.assertIn(b"--mode", result.stderr)
 
 
+class RecordedSelectionTests(unittest.TestCase):
+    """Record updates remain independent of installed selections; no Git writes."""
+
+    def test_new_record_reports_old_selection_without_rewriting_it(self):
+        record = dep.record_read(dep.ROOT / "asic-dependency.json")
+        with tempfile.TemporaryDirectory(prefix="asic-record-selection-") as temporary:
+            store = Path(temporary)
+            (store / ".owner").write_text(dep.OWNER)
+            generation = store / "generations/previous"
+            generation.mkdir(parents=True)
+            receipt = dict(mode="recorded", record=dict(record, revision="0" * 40),
+                           observed_base_revision="0" * 40,
+                           differs_from_recorded_snapshot=False,
+                           captured_differs_from_observed_base=None)
+            receipt_bytes = (json.dumps(receipt) + "\n").encode()
+            (generation / "receipt.json").write_bytes(receipt_bytes)
+            (generation / "activate.sh").write_bytes(b"# previous activation\n")
+            (store / "current").symlink_to("generations/previous")
+            before = {p.name: p.read_bytes() for p in generation.iterdir()}
+            with patch.dict(os.environ, HARDCAML_ASIC_GENERATION=str(generation),
+                            OCAMLPATH=str(generation / "lib")), \
+                 patch.object(dep, "run", side_effect=AssertionError("unexpected process")):
+                status = dep.status(store, record)
+            self.assertTrue(status["baseline_mismatch"])
+            self.assertTrue(status["active_is_published"])
+            self.assertTrue(status["active_library_path_is_first"])
+            self.assertEqual(status["receipt"], receipt)
+            self.assertEqual(status["record"], record)
+            self.assertEqual(os.readlink(store / "current"), "generations/previous")
+            self.assertEqual({p.name: p.read_bytes() for p in generation.iterdir()}, before)
+
+    def test_recorded_mode_validates_committed_bytes_before_build_or_publication(self):
+        with tempfile.TemporaryDirectory(prefix="asic-record-gate-") as temporary:
+            source = Path(temporary) / "source"
+            source.mkdir()
+            store = Path(temporary) / "store"
+            record = dep.record_read(dep.ROOT / "asic-dependency.json")
+            entries = {"dune-project": ("100644", b"incompatible committed provider")}
+            with patch.object(dep, "source_check", return_value=source), \
+                 patch.object(dep, "committed", return_value=entries) as committed, \
+                 patch.object(dep, "git", return_value=record["revision"].encode()), \
+                 patch.object(dep, "development", side_effect=AssertionError("unexpected worktree capture")), \
+                 patch.object(dep, "run", side_effect=AssertionError("unexpected build")):
+                with self.assertRaisesRegex(dep.Error, "renamed public API"):
+                    dep.refresh(source, "recorded", store, record, jobs=2)
+            committed.assert_called_once_with(source, record["revision"])
+            self.assertFalse((store / "current").exists())
+            self.assertFalse((store / "generations").exists())
+
+
 class JobsTests(unittest.TestCase):
     """No Git repositories or compiler processes: exercise resource propagation."""
 
