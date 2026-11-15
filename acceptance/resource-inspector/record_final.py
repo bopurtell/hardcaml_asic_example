@@ -10,7 +10,7 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent
 EXAMPLE = ROOT.parents[1]
-WB = EXAMPLE.parent / "hardcaml_workbench"
+WB = EXAMPLE.parent / "silver"
 
 
 def module(name, path):

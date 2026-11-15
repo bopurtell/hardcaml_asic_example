@@ -9,7 +9,7 @@ import sys
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent
-WB = ROOT.parents[2] / "hardcaml_workbench"
+WB = ROOT.parents[2] / "silver"
 
 
 def main():

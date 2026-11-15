@@ -17,7 +17,7 @@ import time
 
 sys.dont_write_bytecode = True
 EXAMPLE = Path(__file__).resolve().parents[2]
-WB = EXAMPLE.parent / "hardcaml_workbench"
+WB = EXAMPLE.parent / "silver"
 
 
 def module(name, path):

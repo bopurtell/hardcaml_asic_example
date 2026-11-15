@@ -142,7 +142,7 @@ def main():
         'source_snapshot': source_files, 'max_jobs': 2,
         'private_source_root': str(project),
         'provider_command': provider, 'real_dune': shutil.which('dune'),
-        'wb_build_root': str(ROOT.parent / 'hardcaml_workbench' / BUILD),
+        'wb_build_root': str(ROOT.parent / 'silver' / BUILD),
         'captured_files': {str(p.relative_to(captured)): sha(p)
                            for p in sorted(captured.rglob('*')) if p.is_file()}})
     for p in project.glob('*.sexp'):

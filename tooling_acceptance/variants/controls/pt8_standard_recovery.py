@@ -9,7 +9,7 @@ import uuid
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT.parent / 'hardcaml_workbench/demo/synthetic_flow'))
+sys.path.insert(0, str(ROOT.parent / 'silver/demo/synthetic_flow'))
 from http_client import Client, field, parse
 from pt8_acceptance import write, sha
 

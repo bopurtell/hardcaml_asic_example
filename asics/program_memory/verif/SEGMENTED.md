@@ -35,5 +35,5 @@ after changes; do not reuse an old capture's plan against new source. The legacy
 
 Real installed qualification and Workbench launch/reopen evidence are described in
 [the provider guide](../../../../hardcaml_asic/docs/guides/segmented-sram.md) and
-[Workbench release record](../../../../hardcaml_workbench/docs/sram_segmented_release.md).
+[Workbench release record](../../../../silver/docs/sram_segmented_release.md).
 The original main FIFO configuration and installations were preserved.

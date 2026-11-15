@@ -18,7 +18,7 @@ from pt8_waveform_acceptance import ROOT
 from pt8_workbench_native_acceptance import Terminal, Client, field, parse, sexp
 import pt8_workloads as producer
 
-WB = ROOT.parent / 'hardcaml_workbench'
+WB = ROOT.parent / 'silver'
 FINAL_CLIENT = '2c301d20dd744e46942e4a4604a7bde475c67f126a8e86c157c9518fe05da698'
 
 

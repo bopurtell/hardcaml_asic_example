@@ -4,8 +4,8 @@
 Strict supported-format validation and failed-inspection waveform suppression are
 fixed; six durable tests pass. Final direct pair, source-only Plan and fresh native
 Testing JSON-cursor→VCD flow pass with final client `2c301d20…`. See
-[final commands, receipts and hashes](../../hardcaml_workbench/docs/pt8_waveform_final_acceptance.md) and
-[correction receipt and hashes](../../hardcaml_workbench/docs/pt8_waveform_producer_corrections.md).
+[final commands, receipts and hashes](../../silver/docs/pt8_waveform_final_acceptance.md) and
+[correction receipt and hashes](../../silver/docs/pt8_waveform_producer_corrections.md).
 Session02 results below are preserved historical acceptance.
 
 The reusable `scripts/pt8_workloads.py` retains historical no-dump behavior by
@@ -65,7 +65,7 @@ Artifacts pane also offers `w`/`W` for embedded/dedicated Waveforms views. Use
   opens the dedicated Waveforms workspace. Uses only its owned private runtime.
 
 Full concrete artifact paths, hashes, commands and failure history are in
-[Workbench producer handoff](../../hardcaml_workbench/docs/pt8_waveform_producer_handoff.md).
+[Workbench producer handoff](../../silver/docs/pt8_waveform_producer_handoff.md).
 All simulation is functional Icarus; EDA allocation0. Setup reused the existing
 provider generation and built only the isolated example, switch5.2.0+ox,
 `dune build -j 2 --build-dir _build_pt8_workbench` under the shared example lock.

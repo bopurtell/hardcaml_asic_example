@@ -81,7 +81,7 @@ They use the established dependency helper's read-only Git source observation an
 perform no mutative Git, EDA, user-daemon or Protemu action.
 
 Full commands, limits, harness corrections and source-byte oracles:
-`../../../hardcaml_workbench/docs/resource_inspector_acceptance.md` (from this checkout,
+`../../../silver/docs/resource_inspector_acceptance.md` (from this checkout,
 the Workbench is the sibling repository; use the workspace-relative path if browsing).
 
 ## Workbench broad/control/layout follow-up

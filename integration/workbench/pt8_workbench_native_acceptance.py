@@ -19,7 +19,7 @@ import importlib.util
 
 sys.dont_write_bytecode = True
 from workbench_paths import ROOT
-WB = ROOT.parent / 'hardcaml_workbench'
+WB = ROOT.parent / 'silver'
 sys.path.insert(0, str(WB / 'demo/synthetic_flow'))
 from http_client import Client, field, sexp, parse
 from pt8_acceptance import write, sha

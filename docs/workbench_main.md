@@ -90,7 +90,7 @@ Defaults:
   It adds no endpoint restriction.
 * SDK: `.dev/workbench-provider-sdk`.
 * Prebuilt Workbench pair: sibling
-  `hardcaml_workbench/_build_pt8_workbench/default/{daemon,terminal}/main.exe`.
+  `silver/_build_pt8_workbench/default/{daemon,terminal}/main.exe`.
 * Root ASIC project executable:
   `_build/default/asics/fifo_demo/cli/project.exe`.
 * Results: `_flow_results/workbench/{asic,preparation}`.

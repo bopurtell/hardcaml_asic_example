@@ -14,7 +14,7 @@ import pt8_workloads as producer
 from pt8_acceptance import sha, write
 from pt8_waveform_acceptance import protected
 
-WB = ROOT.parent / 'hardcaml_workbench'
+WB = ROOT.parent / 'silver'
 
 
 def preservation():

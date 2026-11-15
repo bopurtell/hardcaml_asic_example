@@ -446,7 +446,7 @@ def show(manifest, *, stream=sys.stdout):
 def default_inputs(root):
     return dict(asic_generation=str(root / '.dev/asic-pt8-workbench/session-final-review-01/asic/generations/ee3af8de9f83418b9afed9c67e473e3c'),
                 sdk_prefix=str(root / '.dev/workbench-provider-sdk'),
-                wb_build_root=str(root.parent / 'hardcaml_workbench/_build_pt8_workbench'),
+                wb_build_root=str(root.parent / 'silver/_build_pt8_workbench'),
                 dune=shutil.which('dune'), python=str(Path(sys.executable).resolve()),
                 toolchain=str(root / '_flow_tools'), git_dir=str(root / '.git'),
                 git=shutil.which('git', path=clean_environment(os.environ).get('PATH')))

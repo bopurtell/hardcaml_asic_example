@@ -120,7 +120,7 @@ def adoption_timeouts(root, old, ownership, expected):
 def main(argv=None, *, root=ROOT):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--build', action='store_true', help='explicitly build test_provider.exe and fifo_sim.exe at -j<=6')
-    p.add_argument('--with-switch', type=Path, default=ROOT.parent / 'hardcaml_workbench/scripts/with-switch.sh')
+    p.add_argument('--with-switch', type=Path, default=ROOT.parent / 'silver/scripts/with-switch.sh')
     p.add_argument('--build-dir', type=Path, default=Path('/tmp/opencode/native-provider-example'))
     p.add_argument('--jobs', type=int, choices=range(1, 7), default=6)
     p.add_argument('--simulator', type=Path, help='already verified executable; required without --build')

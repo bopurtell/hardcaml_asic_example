@@ -15,7 +15,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'scripts'))
 sys.path.insert(0, str(ROOT / 'integration/workbench'))
-sys.path.insert(0, str(ROOT.parent / 'hardcaml_workbench/demo/synthetic_flow'))
+sys.path.insert(0, str(ROOT.parent / 'silver/demo/synthetic_flow'))
 from http_client import Client, field, sexp, parse
 from pt8_acceptance import write, sha
 from pt8_workbench_native_acceptance import protected_state, installed_state

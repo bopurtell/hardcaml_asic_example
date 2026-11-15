@@ -36,7 +36,7 @@ Explicit installation (no dependency refresh, ASIC builds, tests, or daemon work
 
 ```sh
 python3 scripts/install-fifo-simulation.py --build \
-  --with-switch /absolute/hardcaml_workbench/scripts/with-switch.sh \
+  --with-switch /absolute/silver/scripts/with-switch.sh \
   --build-dir /tmp/opencode/native-provider-example --jobs 6
 # Or install both already verified native executables:
 python3 scripts/install-fifo-simulation.py \

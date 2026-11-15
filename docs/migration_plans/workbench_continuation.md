@@ -9,7 +9,7 @@ Read [the layout guide](../repository_layout.md) and
 ## Subsequent developer-workflow closeout
 
 Workbench now records [independently reviewed synthesis/collection and restart
-acceptance](../../../hardcaml_workbench/docs/developer_workflow_refactored_closeout.md)
+acceptance](../../../silver/docs/developer_workflow_refactored_closeout.md)
 on a new ownership-v1 private store. The later installed provider generation is
 `36205ea4748c4972877ac198356d8e44` under `.dev/asic-synthesis-envelope-v1/generations/`.
 Its opt-in `prepare --synthesis-task-limit 6` captures a kernel-enforced six-total-
