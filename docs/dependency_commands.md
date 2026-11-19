@@ -45,6 +45,56 @@ Even a later `.dev/asic` refresh does not update that launcher selection.
 
 ## Development refresh and historical validation
 
+### Direct Feature4 daemon startup
+
+The daemon must inherit the activated compiler dependency. Selecting
+`--environment opam:5.2.0+ox` in the client selects the compiler switch, but does
+not activate this checkout's private ASIC installation. The switch's older
+`hardcaml_asic` package is also version `0.1.0` and lacks
+`hardcaml_asic.execution`. Its concrete failure is:
+
+```text
+Error: Library "hardcaml_asic.execution" not found.
+```
+
+`scripts/with_asic.sh` activates the **already installed** `.dev/asic/current`
+generation, checks both libraries, and executes the supplied command. It can be
+called from any directory and does not refresh dependencies or provision tools.
+For a bounded compiler check, run from this checkout:
+
+```sh
+opam exec --switch=5.2.0+ox -- bash scripts/with_asic.sh \
+  dune build -j6 asics/fifo_demo/cli/project.exe
+```
+
+A daemon already running without that environment needs an explicit user-managed
+restart. After stopping the old daemon normally and ensuring its state-directory
+lock has been released, start the same binary/port/state selection with:
+
+```sh
+opam exec --switch=5.2.0+ox -- bash scripts/with_asic.sh \
+  /home/wayne/devel/jane/bpurtell-feature4/_build/default/daemon/main.exe \
+  --port 41770 \
+  --state-dir /tmp/opencode/bpurtell-feature4-asic-example-state
+```
+
+Start/reconnect the client in another terminal:
+
+```sh
+opam exec --switch=5.2.0+ox -- \
+  /home/wayne/devel/jane/bpurtell-feature4/_build/default/terminal/main.exe \
+  --connect http://127.0.0.1:41770 \
+  --project-root /home/wayne/devel/jane/hardcaml_asic_example \
+  --environment opam:5.2.0+ox
+```
+
+Activation in a new shell cannot change a running daemon's environment. An
+earlier failed preparation remains historical; a new preparation is needed to
+verify the restarted daemon. Use an elaboration-only action when checking this
+repair, since the original Fresh run also requested synthesis. This compiler
+selection does not update the separately pinned physical provider executable in
+`hardcaml-workbench-asic.sexp`.
+
 Run from `hardcaml_asic_example` in your existing `5.2.0+ox` shell. After a
 development refresh has succeeded, select it **in that same shell**:
 

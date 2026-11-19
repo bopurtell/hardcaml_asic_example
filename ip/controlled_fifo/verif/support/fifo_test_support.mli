@@ -59,6 +59,9 @@ module Trace : sig
   (** Evaluate stimuli from the reset state. Traces supplied by the generators
       begin with a synchronous clear edge and end with a drain/underflow edge. *)
   val of_stimuli : (string * Stimulus.t) list -> t list
+
+  (** Evaluate one edge without retaining a whole regression in memory. *)
+  val transition : Model.t -> string * Stimulus.t -> Model.t * t
 end
 
 val directed : unit -> Trace.t list

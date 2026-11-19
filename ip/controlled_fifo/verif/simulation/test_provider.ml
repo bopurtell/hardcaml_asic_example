@@ -7,7 +7,7 @@ let discovery : Wire.Discovery.t =
       [ { id = "controlled-fifo"
         ; label = "Controlled FIFO / independent list checker"
         ; cases =
-            List.map [ "directed"; "seeded" ] ~f:(fun id : Wire.Case.t ->
+            List.map [ "directed"; "seeded"; "export-stress" ] ~f:(fun id : Wire.Case.t ->
               { id; label = "FIFO " ^ id })
         ; parameters =
             [ { key = "checker"
@@ -18,8 +18,13 @@ let discovery : Wire.Discovery.t =
             ; { key = "cycles"
               ; label = "cycles"
               ; default = "4096"
-              ; choices = [ "64"; "4096"; "20000" ]
-              }
+               ; choices = [ "64"; "4096"; "20000" ]
+               }
+             ; { key = "trace_mib"
+               ; label = "export-stress VCD size (MiB; other cases ignore)"
+               ; default = "1"
+               ; choices = [ "1"; "16"; "64" ]
+               }
             ]
         ; default_seed = "42"
         }
@@ -79,7 +84,7 @@ let run simulator (context : Runner.context) =
           [ case
           ; selection.seed
           ; words
-          ; cycles
+           ; (if String.equal case "export-stress" then parameter "trace_mib" else cycles)
           ; Runner.artifact_path context (case ^ ".vcd")
           ; Runner.artifact_path context (case ^ ".sexp")
           ; checker
@@ -96,7 +101,7 @@ let run simulator (context : Runner.context) =
                    { case_id = Some case
                    ; completed = Int.of_string completed
                    ; total = Some (Int.of_string total)
-                   ; unit_ = "FIFO edges"
+                    ; unit_ = (if String.equal case "export-stress" then "VCD bytes" else "FIFO edges")
                    })
             | _ -> failwith "invalid native progress")
           else if String.is_prefix line ~prefix:"CHECK_FAILED " && Option.is_none !message

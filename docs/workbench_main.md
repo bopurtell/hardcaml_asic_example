@@ -71,6 +71,11 @@ opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py daemon
 opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py client
 ```
 
+For verified external waveform handoff, append
+`--simulation-viewer /usr/bin/gtkwave` to the client command. See the
+[large-trace export acceptance walkthrough](large_trace_export.md) for the
+1/16/64 MiB FIFO case, export controls and cancellation exercise.
+
 The foreground production daemon selects an available loopback port with `--port 0`
 and publishes `discovery/daemon.sexp` using `--discovery-dir`. The client requires
 the daemon's lifetime lock and explicit endpoint; it never spawns a daemon. It

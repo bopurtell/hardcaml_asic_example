@@ -521,7 +521,9 @@ def main(argv=None):
     publication.add_argument('--dry-run', action='store_true', help='check readiness without changing companions')
     commands.add_parser('build', help='explicit current-source build at -j2; no app/config publication')
     commands.add_parser('daemon', help='foreground production daemon on an available loopback port')
-    commands.add_parser('client', help='connect only; never start a daemon')
+    client = commands.add_parser('client', help='connect only; never start a daemon')
+    client.add_argument('--simulation-viewer', type=Path,
+                        help='absolute client-host executable for verified external trace handoff')
     commands.add_parser('status', help='read installation/ownership without starting work')
     args = parser.parse_args(argv)
     root = args.root.resolve(strict=True)
@@ -547,8 +549,15 @@ def main(argv=None):
         value = verify_install(root, store, published=True)
         url = endpoint(store)
         env = environment(root, store, Path(value['asic_generation']), Path(value['sdk_prefix']))
+        viewer_args = []
+        if args.simulation_viewer is not None:
+            viewer = args.simulation_viewer
+            if not viewer.is_absolute() or not viewer.is_file() or not os.access(viewer, os.X_OK):
+                raise ValueError('--simulation-viewer must be an absolute executable file')
+            viewer_args = ['--simulation-viewer', str(viewer)]
         return subprocess.call([value['apps']['client']['path'], '--connect', url,
-                                '--project-root', str(root), '--environment', 'inherited'], cwd=root, env=env)
+                                '--project-root', str(root), '--environment', 'inherited',
+                                *viewer_args], cwd=root, env=env)
     with lock(store / 'session.lock'):
         if args.command == 'prepare':
             args.asic_generation = args.asic_generation or root / '.dev/asic-synthesis-envelope-v1/generations' / GENERATION
