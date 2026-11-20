@@ -18,19 +18,19 @@ From `hardcaml_asic_example/`, in separate terminals:
 
 ```sh
 # Terminal 1: foreground server
-opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py daemon
+opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py daemon
 ```
 
 ```sh
 # Terminal 2: client, optionally with external GTKWave handoff
-opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py client \
+opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py client \
   --simulation-viewer /usr/bin/gtkwave
 ```
 
 The matching app pair was rebuilt from `silver/` and published to the existing
 main launcher on 2026-11-17. No further prepare/publish step is needed for that
 selection. For future simulation source edits, stop the server and explicitly run
-`opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py build`.
+`opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py build`.
 
 ## Generate and export through Testing
 

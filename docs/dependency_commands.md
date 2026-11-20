@@ -45,6 +45,19 @@ Even a later `.dev/asic` refresh does not update that launcher selection.
 
 ## Development refresh and historical validation
 
+### Which rebuild do I need?
+
+| Change | Command from this example | What changes |
+| --- | --- | --- |
+| Edited only the example | `dune build -j4 .` | Reuses the checkout's prepared libraries and incrementally rebuilds example targets. |
+| Edited the sibling `hardcaml_asic` source and want to try it | `./scripts/build_with_asic_checkout.sh` | Reuses both Dune build trees and builds the example against the provider checkout. An interface change can rebuild downstream consumers. |
+| Ready to retain a validated provider snapshot | `python3 scripts/asic_dependency.py refresh --mode development --source ../hardcaml_asic --jobs 4` | Builds and probes a fresh private generation and updates `.dev/asic/current`. Prepared Silver keeps its separately selected generation until explicitly updated. |
+
+None of these commands rebuilds the opam switch. The compiler, Hardcaml and
+OxCaml are existing build inputs. A private refresh takes longer than an
+incremental build because it deliberately starts from a fresh snapshot and
+validates the installation. It is useful at a handoff, not on every edit.
+
 ### Direct Feature4 daemon startup
 
 The daemon must inherit the activated compiler dependency. Selecting

@@ -1,8 +1,9 @@
-# Everyday Workbench on the actual checkout
+# Everyday Silver on the actual checkout
 
-`scripts/workbench_main.py` uses the repository root containing `dune-project` as
+`scripts/silver.py` uses the repository root containing `dune-project` as
 the editable project. It never creates a copied `project/`. Run the script from
-any directory; defaults derive from the script location.
+any directory; defaults derive from the script location. The previous launcher,
+`scripts/workbench_main.py`, still accepts the same commands and uses the same state.
 
 **Local setup verified, 2026-11-11:** prepared and published against the real checkout.
 The actual production daemon/client startup, both simulation catalogs and all seven
@@ -39,9 +40,9 @@ No root companion is published if the helper is missing or points to a copied ro
 Use the installed compatible compiler environment:
 
 ```sh
-opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py prepare --build
-python3 -B scripts/workbench_main.py status
-python3 -B scripts/workbench_main.py publish --dry-run
+opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py prepare --build
+python3 -B scripts/silver.py status
+python3 -B scripts/silver.py publish --dry-run
 ```
 
 Preparation explicitly compiles the current FIFO project, native FIFO provider and
@@ -52,7 +53,7 @@ server. Without `--build`, all required current build paths must already exist.
 After coordinating with other users of the root checkout, publish separately:
 
 ```sh
-python3 -B scripts/workbench_main.py publish
+python3 -B scripts/silver.py publish
 ```
 
 Publication checks the owner locks and Linux process project/state/discovery
@@ -64,11 +65,24 @@ does not stop, signal or adopt other sessions. All root companion changes requir
 the exact previously recorded hashes; unknown edits are refused. The first
 publication uses the exact baseline captured by `prepare`.
 
-Then, in separate terminals:
+On an already prepared and published checkout, open Silver in one terminal:
 
 ```sh
-opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py daemon
-opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py client
+opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py open
+```
+
+`open` uses the installed daemon/client pair, including releases predating
+`--standalone`. It holds the session lock, starts the daemon with the usual
+persistent state, and waits up to 30 seconds for that process to publish its
+loopback endpoint before connecting the foreground client. Quitting the client
+or interrupting the launcher stops the owned daemon. If the main daemon is
+already running, use `client` to attach instead.
+
+To keep the daemon and its jobs alive across client exits, use separate terminals:
+
+```sh
+opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py daemon
+opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py client
 ```
 
 For verified external waveform handoff, append
@@ -81,8 +95,8 @@ and publishes `discovery/daemon.sexp` using `--discovery-dir`. The client requir
 the daemon's lifetime lock and explicit endpoint; it never spawns a daemon. It
 opens the actual repository with `--environment inherited`.
 
-The launcher keeps a session lock while supervising its daemon. SIGINT/SIGTERM are
-forwarded only to that owned daemon. Client exit leaves the server running.
+With the separate `daemon` command the launcher keeps the session lock and
+forwards SIGINT/SIGTERM to its daemon. A separate `client` exit leaves it running.
 
 ## Installed selections and persistence
 
@@ -149,13 +163,13 @@ generic build/test and EDA as if the helper's two-job setting governed them.
 
 ```sh
 # Current source only, with this session's daemon explicitly stopped:
-opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py build
+opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py build
 
 # Reviewed replacement app pair/configuration/dependency selection:
-opam exec --switch=5.2.0+ox -- python3 -B scripts/workbench_main.py prepare --update --build \
+opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py prepare --update --build \
   --expected-daemon-sha256 REVIEWED_DAEMON_SHA256 \
   --expected-client-sha256 REVIEWED_CLIENT_SHA256
-python3 -B scripts/workbench_main.py publish
+python3 -B scripts/silver.py publish
 ```
 
 Repeated plain `prepare` verifies the existing installation. `build` does not

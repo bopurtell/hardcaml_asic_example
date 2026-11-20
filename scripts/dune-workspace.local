@@ -1,0 +1,7 @@
+(lang dune 3.17)
+
+; Dune checks the caller's OCAMLPATH before findlib.conf's path.
+; A context (paths (OCAMLPATH ...)) would discard that override.
+(context
+ (default
+  (paths (OCAMLFIND_CONF .dev/dune/findlib.conf))))

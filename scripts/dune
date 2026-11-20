@@ -18,7 +18,17 @@
 (rule
  (alias runtest)
  (deps asic_dependency.py test_asic_dependency.py)
-  (action (run python3 %{dep:test_asic_dependency.py})))
+   (action (run python3 %{dep:test_asic_dependency.py})))
+
+(alias
+ (name runtest)
+ (deps (alias dune-discovery-test)))
+
+(rule
+ (alias dune-discovery-test)
+ (deps test_dune_discovery.py dune-workspace.local workbench_main.py workbench_git.py
+       ../integration/workbench/wire.py ../integration/workbench/config_location.py)
+ (action (run python3 -B %{dep:test_dune_discovery.py})))
 
 (rule
  (alias ownership-layout-test)

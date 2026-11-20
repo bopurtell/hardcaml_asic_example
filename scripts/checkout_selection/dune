@@ -1,0 +1,9 @@
+; Opt-in integration check: build_with_asic_checkout.sh @scripts/checkout_selection/check
+; Compare the resolved file (not just the package version or shell environment).
+(rule
+ (alias check)
+ (deps (sandbox none))
+ (action
+  (run /usr/bin/test
+   %{lib:hardcaml_asic:META} -ef
+   %{env:HARDCAML_ASIC_CHECKOUT=unset}/_build/install/default/lib/hardcaml_asic/META)))

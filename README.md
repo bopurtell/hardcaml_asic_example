@@ -1,8 +1,13 @@
 # Hardcaml ASIC development examples
 
 Hardware projects and external-consumer qualification for `hardcaml_asic` and
-Hardcaml Workbench. The original design is a controlled FIFO ASIC; the repository
+Silver (formerly Hardcaml Workbench). The original design is a controlled FIFO ASIC; the repository
 also includes a program-memory SRAM ASIC and small tool-qualification fixtures.
+
+To launch the installed app, run `silver` here. If the command isn't found,
+run `./install.sh` once from the [Silver checkout](../silver/README.md#install-and-open-silver).
+To reopen this example's **prepared** tools and saved session instead, use
+`python3 -B scripts/silver.py open`.
 
 ## Where things live
 
@@ -29,8 +34,13 @@ it is not a bucket for design-specific checks. See the
 Use an already installed compatible `hardcaml_asic` provider. The development
 dependency workflow is exposed by `python3 scripts/asic_dependency.py --help`.
 Refresh/install is an explicit separate action; ordinary builds do not provision
-EDA tools. Activate the selected provider in the shell that runs Dune. Building
-the native simulation adapter additionally requires `hardcaml_workbench_provider`.
+EDA tools. Building the native simulation adapter additionally requires the Silver
+provider SDK (`hardcaml_workbench_provider`).
+
+For an existing prepared installation, `python3 -B scripts/silver.py configure-dune`
+sets up checkout-local Dune library discovery once. Then `dune build .` works in
+new shells using that compiler switch; there is no `OCAMLPATH` export to repeat.
+Rerun the configuration if you deliberately change switches or move the checkout.
 
 `asic-dependency.json` selects committed provider
 `4b6bb60562c0133db9e3ccc6b183736e5658a3f0` for explicit **recorded** refreshes.
@@ -39,7 +49,8 @@ Changing this record does not upgrade an installed generation or the Workbench
 selection; those continue to use their existing receipts and executable paths.
 
 ```sh
-# After selecting and activating a compatible installed dependency:
+# With the example's ASIC dependency and Silver SDK already prepared:
+dune build -j6 .
 dune build -j6 asics/fifo_demo/cli/project.exe
 dune runtest -j6 ip/controlled_fifo/verif/cyclesim
 dune build -j6 @@asics/fifo_demo/verif/runtest
@@ -51,6 +62,14 @@ dune runtest -j6 tooling_acceptance/timing/fixture/verif
 descendants; for example `dune runtest asics/fifo_demo/verif` includes bundle replay.
 No directory needs to be named `test/` for Dune verification aliases to work.
 Keep the total job allocation of concurrent commands at or below **20**.
+
+**Editing `../hardcaml_asic` itself?** Run `./scripts/build_with_asic_checkout.sh`
+from this checkout to build against those edits. It incrementally builds the
+provider and the example in sequence. Neither step reinstalls the compiler,
+Hardcaml or OxCaml. The example uses a separate build directory in this mode so
+experimenting doesn't replace the project executable used by prepared Silver.
+Use a development **refresh** only when you want a validated, installed snapshot
+of the provider; it is not necessary on every source edit.
 
 PDK-free bundle replay, including generated-Verilog simulation when Icarus is
 available:
@@ -87,7 +106,11 @@ target, timing, source inventory, and pin assignments.
 For SRAM selection/operations and retained physical evidence, start with
 [`asics/program_memory/README.md`](asics/program_memory/README.md).
 
-## Workbench and local storage
+## Silver and local storage
+
+On a prepared and published checkout, run `python3 -B scripts/silver.py open`
+to use Silver in one terminal. Quitting stops that session's daemon. See
+[Everyday Silver](docs/workbench_main.md) for setup and persistent-server mode.
 
 The supported Workbench loader currently discovers the three root companion files:
 

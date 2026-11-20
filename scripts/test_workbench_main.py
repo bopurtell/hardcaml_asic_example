@@ -5,6 +5,10 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -16,6 +20,15 @@ spec.loader.exec_module(main)
 
 
 class MainTest(unittest.TestCase):
+    def test_cli_names_use_same_checkout(self):
+        for script in ('silver.py', 'workbench_main.py'):
+            with self.subTest(script=script):
+                result = subprocess.run(
+                    [sys.executable, '-B', str(HERE / script), '--root', str(self.root), 'status'],
+                    cwd=self.root, capture_output=True, text=True, check=True)
+                self.assertEqual(json.loads(result.stdout), dict(
+                    prepared=False, project_root=str(self.root), store=str(self.store)))
+
     def setUp(self):
         # All disposable fixture data stays under persistent project-local storage.
         parent = HERE.parent / '.dev'
@@ -244,6 +257,69 @@ class MainTest(unittest.TestCase):
         for name in ('state', 'discovery', 'tmp'):
             self.assertTrue((self.store / name).is_dir())
             self.assertEqual((self.store / name).stat().st_mode & 0o777, 0o700)
+
+    def setup_open(self, daemon_body, client_body):
+        header = b'#!/usr/bin/python3\nimport os, sys, signal, time, fcntl\nfrom pathlib import Path\n'
+        self.file(self.wb / 'default/daemon/main.exe', header + b'''
+d = Path(sys.argv[sys.argv.index('--discovery-dir') + 1])
+lock = (d / 'lifetime.lock').open('a')
+fcntl.flock(lock, fcntl.LOCK_EX)
+time.sleep(.1)
+def publish(pid):
+    p = d / 'pending'
+    p.write_text(f'((endpoint http://127.0.0.1:1234)(instance_id test)(pid {pid}))')
+    p.rename(d / 'daemon.sexp')
+''' + daemon_body, executable=True)
+        self.file(self.wb / 'default/terminal/main.exe', header + client_body, executable=True)
+        self.prepare()
+        self.publish()
+        self.file(self.store / 'discovery/daemon.sexp', b'stale data from a previous run')
+
+    def test_open_waits_for_new_record_and_reaps_daemon_on_client_exit(self):
+        self.setup_open(b'publish(os.getpid())\nsignal.pause()\n', b'''
+assert sys.argv[1:] == ['--connect', 'http://127.0.0.1:1234', '--project-root', os.getcwd(), '--environment', 'inherited']
+assert os.environ['TMPDIR'] == str(Path.cwd() / '.dev/workbench-main/tmp')
+assert 'PT8_PROJECT_ROOT' not in os.environ
+sys.exit(7)
+''')
+        with patch.dict(os.environ, PT8_PROJECT_ROOT='poison'):
+            self.assertEqual(main.main(['--root', str(self.root), 'open']), 7)
+        self.assertTrue(main.unlocked(self.store / 'discovery/lifetime.lock'))
+        self.assertTrue(main.unlocked(self.store / 'session.lock'))
+
+    def test_open_rejects_foreign_discovery_without_launching_client(self):
+        self.setup_open(b'publish(os.getppid())\nsignal.pause()\n', b"Path('client-started').touch()\n")
+        with self.assertRaisesRegex(RuntimeError, 'not from the owned daemon'):
+            main.main(['--root', str(self.root), 'open'])
+        self.assertFalse((self.root / 'client-started').exists())
+        self.assertTrue(main.unlocked(self.store / 'discovery/lifetime.lock'))
+
+    def test_signalling_open_reaps_both_children_and_releases_session_lock(self):
+        self.setup_open(b'publish(os.getpid())\nsignal.pause()\n',
+                        b"Path('client.pid').write_text(str(os.getpid()))\nsignal.pause()\n")
+        # Fork to inherit the inert fixture manifest validator.
+        pid = os.fork()
+        if pid == 0:
+            try:
+                code = main.main(['--root', str(self.root), 'open'])
+            except BaseException:
+                code = 1
+            os._exit(code)
+        try:
+            deadline = time.monotonic() + 5
+            ready = self.root / 'client.pid'
+            while not ready.exists() and time.monotonic() < deadline:
+                time.sleep(.02)
+            self.assertTrue(ready.exists())
+            self.assertFalse(main.unlocked(self.store / 'session.lock'))
+        finally:
+            os.kill(pid, signal.SIGTERM)
+            _, status = os.waitpid(pid, 0)
+        self.assertEqual(os.waitstatus_to_exitcode(status), 128 + signal.SIGTERM)
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int(ready.read_text()), 0)
+        self.assertTrue(main.unlocked(self.store / 'discovery/lifetime.lock'))
+        self.assertTrue(main.unlocked(self.store / 'session.lock'))
 
     def test_process_preflight_distinguishes_separate_session_and_root_workspace(self):
         proc = self.root / 'proc'
