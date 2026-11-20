@@ -50,6 +50,11 @@ class BootstrapTests(unittest.TestCase):
             dest = self.project / source
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(BOOTSTRAP.parent / source, dest)
+        # The simulation setup has its own checkout/provider integration tests;
+        # here verify bootstrap invokes it after provisioning with the selected tools.
+        (self.project / "scripts/configure-simulation.py").write_text(
+            'import sys\nfrom pathlib import Path\n'
+            'Path(__file__).with_suffix(".args").write_text(sys.argv[1])\n')
         self.caller = self.root / "caller's cwd"
         self.caller.mkdir()
         self.bin = self.root / "installed bin"
@@ -122,6 +127,8 @@ target.chmod(0o755)
         fields = dict(parse((configs / ASIC).read_text()))
         self.assertEqual(fields["project_executable"], str(self.project / "_build/default" / TARGET))
         self.assertEqual(fields["toolchain"], str(self.project / "_flow_tools"))
+        self.assertEqual((self.project / "scripts/configure-simulation.args").read_text(),
+                         "--toolchain=" + str(self.project / "_flow_tools"))
         self.assertEqual(dict(parse((configs / PREP).read_text()))["build_target"], TARGET)
         self.assertFalse((self.project / ASIC).exists())
         self.assertFalse((self.project / PREP).exists())

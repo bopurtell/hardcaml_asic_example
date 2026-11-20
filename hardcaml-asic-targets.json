@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "default_target": "fifo_demo",
+  "targets": [
+    { "id": "fifo_demo", "executable": "asics/fifo_demo/cli/project.exe" },
+    { "id": "program_memory", "executable": "asics/program_memory/project/memory_cli.exe" }
+  ]
+}

@@ -68,6 +68,10 @@ def source_inventory(root, suite):
     return router.inventory(root, (*SOURCE_PATHS[suite], *metadata))
 
 
+def library_path(manifest):
+    return 'lib/hardcaml_asic' if manifest.get('installed_package') else 'lib'
+
+
 def target_inventory(manifest, suite):
     result = {}
     for name in manifest['suite_targets'][suite]:
@@ -79,7 +83,7 @@ def target_inventory(manifest, suite):
     if suite == 'pt8-memory-workloads':
         root = Path(manifest['asic_generation'])
         result.update({str(root / name): digest for name, digest in
-                       router.inventory(root, ('lib',)).items()})
+                       router.inventory(root, (library_path(manifest),)).items()})
     return result
 
 
@@ -101,6 +105,8 @@ def drift(manifest, suite):
 
 
 def validate_manifest(manifest, operation):
+    prepare = ('python3 -B scripts/configure-simulation.py --refresh'
+               if manifest.get('installed_package') else PREPARE)
     if manifest.get('checkout_layout') != LAYOUT or manifest.get('source_layout') != router.SOURCE_LAYOUT:
         raise ValueError('checkout simulation manifest unavailable; run ' + PREPARE)
     for key in ('suite_sources', 'suite_targets', 'suite_executables', 'target_hashes', 'provider_commands'):
@@ -111,7 +117,7 @@ def validate_manifest(manifest, operation):
             changed = drift(manifest, suite)
             if changed:
                 raise ValueError('stale ' + suite + ' checkout (' + ', '.join(changed[:8]) +
-                                 '); run ' + PREPARE)
+                                 '); run ' + prepare)
 
 
 def main(argv=None):

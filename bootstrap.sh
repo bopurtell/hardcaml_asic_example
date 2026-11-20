@@ -29,4 +29,5 @@ while (($#)); do
     shift
 done
 "${provision[@]}"
-exec python3 -B "$project_root/scripts/configure-synthesis.py" --toolchain="$tools"
+python3 -B "$project_root/scripts/configure-synthesis.py" --toolchain="$tools"
+exec python3 -B "$project_root/scripts/configure-simulation.py" --toolchain="$tools"

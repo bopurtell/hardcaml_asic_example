@@ -18,7 +18,7 @@ import workbench_provider as router
 
 def prepare_simulation(*, project_root, build_dir, asic_generation, model_root,
                        run, environment=None, dune='dune', python=sys.executable,
-                       simulation_dir=None):
+                       simulation_dir=None, installed_package=False):
     """Build actual checkout targets, then atomically publish manifest.json.
 
     All roots are persistent, caller-selected paths; project_root is the editable
@@ -49,7 +49,8 @@ def prepare_simulation(*, project_root, build_dir, asic_generation, model_root,
     env['OCAMLPATH'] = str(generation / 'lib') + (
         os.pathsep + env['OCAMLPATH'] if env.get('OCAMLPATH') else '')
     env['PATH'] = str(generation / 'bin') + os.pathsep + env.get('PATH', '')
-    binaries = {name: str(build / 'default' / name) for name in checkout.TARGETS}
+    targets = checkout.TARGETS[:3] if installed_package else checkout.TARGETS
+    binaries = {name: str(build / 'default' / name) for name in targets}
     fifo = [binaries[checkout.TARGETS[0]], '--simulator', binaries[checkout.TARGETS[1]]]
     pt8 = [str(python), '-B', str(root / 'integration/workbench/pt8_workbench_provider.py'),
            '--generation', str(generation), '--producer-root', str(root),
@@ -69,7 +70,7 @@ def prepare_simulation(*, project_root, build_dir, asic_generation, model_root,
                     source_layout=router.SOURCE_LAYOUT, project_root=str(root),
                     build_dir=str(build), asic_generation=str(generation),
                     model_root=str(models), manifest_path=str(manifest_path),
-                    targets=binaries, project_executable=binaries[checkout.TARGETS[4]],
+                    targets=binaries, project_executable=binaries.get(checkout.TARGETS[4]),
                     provider_command=command,
                     provider_commands=dict(zip(router.SUITES, (fifo, pt8))),
                     environment=env,
@@ -79,16 +80,20 @@ def prepare_simulation(*, project_root, build_dir, asic_generation, model_root,
                     max_jobs=2, eda_allocation=0)
     before = {suite: checkout.source_inventory(root, suite) for suite in router.SUITES}
     # Catch changes to supplied immutable dependencies during the build too.
-    dependency_before = router.inventory(generation, ('bin/hardcaml-asic-flow', 'lib'))
+    if installed_package:
+        # A switch also contains unrelated packages; track only the selected ASIC package.
+        manifest['installed_package'] = True
+    dep_paths = ('bin/hardcaml-asic-flow', checkout.library_path(manifest))
+    dependency_before = router.inventory(generation, dep_paths)
     models_before = router.inventory(models, checkout.MODELS)
     argv = [str(dune), 'build', '--root', str(root), '--build-dir', str(build),
-            '-j', '2', *checkout.TARGETS]
+            '-j', '2', *targets]
     result = run(argv, cwd=root, env=env)
     if getattr(result, 'returncode', 0):
         raise RuntimeError('checkout simulation build failed; run ' + checkout.PREPARE)
     after = {suite: checkout.source_inventory(root, suite) for suite in router.SUITES}
     if (before != after or dependency_before != router.inventory(
-            generation, ('bin/hardcaml-asic-flow', 'lib')) or
+            generation, dep_paths) or
             models_before != router.inventory(models, checkout.MODELS)):
         raise RuntimeError('simulation inputs changed during build; run ' + checkout.PREPARE)
     manifest['suite_sources'] = after

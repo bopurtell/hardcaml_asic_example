@@ -2,7 +2,8 @@ open! Core
 open Hardcaml_asic
 
 let usage =
-   "Usage: memory_cli (check|emit|prepare|preview|resources) --selection (flops|exact|fallback) --operation (synthesis|hardening)\n\
+   "Usage: memory_cli describe --json | flow list --json\n\
+    \       memory_cli (check|emit|prepare|preview|resources) --selection (flops|exact|fallback) --operation (synthesis|hardening)\n\
     \       prepare requires --source-root ROOT --results-root STORE; optional --json\n\
     \       resources is nonpublishing; optional --simulation; --depth 128|256 (default 256)\n\
     \       preview requires --source-root ROOT; nonpublishing implementation preparation\n\
@@ -14,6 +15,13 @@ let main () =
   let args = Array.to_list (Sys.get_argv ()) |> List.tl_exn in
   match args with
   | [ "--help" ] -> Out_channel.output_string stdout usage
+  | [ "describe"; "--json" ] ->
+    let project = Program_memory.project ~operation:Hardening Exact |> Or_error.ok_exn in
+    print_endline (Yojson.Safe.to_string (`Assoc
+      [ "project_name", `String (Project.name project)
+      ; "declaration_sexp", `String (Sexp.to_string_hum (Project.describe project)) ]))
+  | [ "flow"; "list"; "--json" ] ->
+    print_endline (Yojson.Safe.to_string (Flow_spec.list_to_yojson (Program_memory.catalog ())))
   | command :: rest when List.mem [ "check"; "emit"; "prepare"; "preview"; "resources" ] command ~equal:String.equal ->
     let rec parse acc = function
        | [] -> acc

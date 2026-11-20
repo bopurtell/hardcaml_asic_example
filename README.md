@@ -9,16 +9,30 @@ run these from this example, in the switch where you installed the ASIC librarie
 
 ```sh
 ./bootstrap.sh
-silver
+silver --standalone
 ```
 
 Bootstrap provisions the physical tools, builds the FIFO project CLI and
-configures the checkout's Standard flow for Silver. After that, just run
-`silver`. The provider on `PATH` supplies execution; the example's own CLI
+configures the checkout's Standard flow and two simulation suites for Silver.
+After that, just run `silver --standalone`. The provider on `PATH` supplies execution; the example's own CLI
 supplies its flow catalog, including `standard / balanced / synthesis`.
 For a checkout whose `_flow_tools` was provisioned before this setup step was
 added, run `python3 -B scripts/configure-synthesis.py` to configure synthesis
 without reprovisioning.
+For simulation on an already provisioned checkout:
+
+```sh
+python3 -B scripts/configure-simulation.py
+silver-simulation-setup check --root "$PWD"  # lists 2 suites / 5 cases
+silver --standalone
+```
+
+Reopen Silver after setup. In Testing, focus Catalog, press `d` to discover,
+choose a suite and cases, and press Enter to open the launch form. After the
+run passes, select its VCD in Artifacts (`w` to view, `e` to export).
+After changing simulation sources, run `python3 -B scripts/configure-simulation.py --refresh`.
+The companion and manifest are machine-local and ignored by Git: a fresh clone
+or a cleanup of ignored files requires setup again. Silver history is separate.
 If Silver was already open when the project was configured for the first time,
 quit it with `q` and reopen it: the running backend caches the ASIC configuration.
 To reopen this example's **prepared** tools and saved session instead, use
@@ -100,6 +114,29 @@ an explicit RTL skip if they are unavailable. Shared CLI/dependency checks remai
 under `dune runtest -j6 scripts`.
 
 ## Project CLI
+
+From the checkout root, a provider with `hardcaml-asic-targets` can discover
+and invoke the project's standalone chip executables without Silver:
+
+```sh
+hardcaml-asic-targets list
+hardcaml-asic-targets select --target program_memory
+hardcaml-asic-targets exec --target fifo_demo -- describe --json
+hardcaml-asic-targets exec --target program_memory -- flow list --json
+```
+
+[`hardcaml-asic-targets.json`](hardcaml-asic-targets.json) registers these two
+entry points; FIFO is the default. The program-memory route invokes its own
+`memory_cli.exe`. Removing its entry hides it from provider discovery, but
+`dune exec ./asics/program_memory/project/memory_cli.exe -- flow list --json`
+still works. Each chip owns its hardware declaration and named flows.
+
+The recorded dependency predates `hardcaml-asic-targets` and the macro-limit
+API used by the multi-chip FIFO CLI. Bootstrap does not invoke the catalog
+tool, but building that FIFO executable still requires a provider with the
+macro-limit API. With a catalog-capable provider and its OCaml libraries active, run
+`python3 -B scripts/test_target_catalog.py` to check the public CLI, including
+entry removal, against a temporary copy of the designs.
 
 `chip list --json` lists the chips and variants built into the project executable.
 The same `--chip ID` and `--variant ID` selectors apply to `flow list`, `describe`,
