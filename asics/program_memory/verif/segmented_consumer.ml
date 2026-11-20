@@ -11,19 +11,7 @@ let catalog_inputs =
 
 let project () = Program_memory.project ~operation:Hardening Exact |> Or_error.ok_exn
 
-let catalog () =
-  let methodology = Flow.Methodology.create ~id:"stock256-r0" ~label:"Stock 256x16 R0"
-    ~description:"Bounded program-memory qualification through Timing"
-    ~backend_recipe:Librelane_classic_v1
-    ~endpoints:[ Synthesis; Floorplan; Placement; Cts; Routing; Timing ]
-    ~configurable:Flow.Parameter.Key.all ~defaults:[] |> Or_error.ok_exn in
-  let profile = Flow.Profile.create ~id:"qualification" ~label:"Qualification"
-    ~description:"Unmodified public stock physical settings" ~assignments:[] |> Or_error.ok_exn in
-  let entry = Flow.Catalog.Entry.create ~methodology ~profiles:[profile]
-    ~default_profile:"qualification" |> Or_error.ok_exn in
-  Flow.Catalog.create ~entries:[entry] ~default_flow:"stock256-r0"
-    ~default_profile:"qualification" |> Or_error.ok_exn
-;;
+let catalog = Program_memory.catalog
 
 let prepare source_root endpoint =
   let project = project () in

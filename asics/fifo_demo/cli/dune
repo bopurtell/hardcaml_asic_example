@@ -1,4 +1,4 @@
 (executable
  (name project)
- (libraries unix core hardcaml_asic hardcaml_asic.execution fifo_asic yojson)
+ (libraries unix core hardcaml_asic hardcaml_asic.execution fifo_asic program_memory sram_budget yojson)
  (preprocess (pps ppx_jane)))

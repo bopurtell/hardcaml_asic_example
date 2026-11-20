@@ -2,7 +2,7 @@ module U = Unix
 open! Core
 open Hardcaml_asic
 
-let usage = "Usage: project describe | prepare | preview | resources | emit | preflight | run [OPTIONS]\n       project flow list | describe | plan | emit | run [OPTIONS]"
+let usage = "Usage: project describe | prepare | preview | resources | emit | preflight | run [OPTIONS]\n       project chip list [--json]\n       project flow list | describe | plan | emit | run [--chip ID] [--variant ID] [OPTIONS]"
 let bad message = raise (Stdlib.Arg.Bad (message ^ "\n" ^ usage))
 (* Executable paths must retain symlink-parent/.. traversal and venv aliases. *)
 let anchor_executable path =
@@ -76,7 +76,7 @@ let find_provider explicit =
      | None -> failwith "hardcaml-asic-flow is not on PATH; install/activate a compatible provider (CLI contract 2, 3 or 4).")
 ;;
 
-let check_named_provider provider =
+let check_named_provider provider ~manifest ~endpoint =
   let channel = U.open_process_args_in provider [| provider; "--version"; "--json" |] in
   let metadata = Exn.protect ~f:(fun () -> Yojson.Safe.from_channel channel)
     ~finally:(fun () -> match U.close_process_in channel with
@@ -86,12 +86,30 @@ let check_named_provider provider =
     | `Assoc fields ->
       (match List.filter fields ~f:(fun (k, _) -> String.equal k key) with
        | [ (_, value) ] -> value
-       | _ -> failwith "Malformed provider metadata; CLI4 + namedflow1 required")
-    | _ -> failwith "Malformed provider metadata; CLI4 + namedflow1 required"
+       | _ -> failwith ("Malformed provider metadata: missing or duplicate field " ^ key ^ "; CLI4 + namedflow1 required"))
+    | _ -> failwith ("Malformed provider metadata: missing or duplicate field " ^ key ^ "; CLI4 + namedflow1 required")
   in
   let contract = field "cli_contract" metadata in
   match field "version" contract, field "namedflow1" (field "capabilities" contract) with
-  | `Int 4, `Bool true -> ()
+  | `Int 4, `Bool true ->
+    let caps = field "capabilities" contract in
+    let require key expected =
+      if not (Poly.equal (field key caps) expected) then
+        failwith ("Selected SRAM plan requires provider capability " ^ key) in
+    (match Yojson.Safe.Util.member "macro_contract" manifest with
+     | `Null -> ()
+     | macro ->
+       (match field "schema_version" macro with
+        | `Int 1 -> require "sram_synthesis1" (`Bool true)
+        | `Int 2 ->
+          require "sram_segmented1" (`Bool true);
+          let scope = field "sram_segmented1_scope" caps in
+          if not (Poly.equal (field "profile" scope) (`String "stock256x16_r0_through_timing_v1") &&
+                  Poly.equal (field "named" scope) (`Bool true) &&
+                  List.mem (Yojson.Safe.Util.to_list (field "endpoints" scope))
+                    (`String (Flow.Stage.to_string endpoint)) ~equal:Poly.equal) then
+            failwith "Selected endpoint is outside the provider's segmented SRAM scope"
+        | _ -> failwith "Unsupported named SRAM macro contract"))
   | _ -> failwith "Named flows require exact CLI4 + namedflow1=true; refresh a compatible provider"
 ;;
 
@@ -108,7 +126,72 @@ let immutable_plan_file path contents =
     ~finally:(fun () -> Out_channel.close_no_err channel; U.unlink temporary)
 ;;
 
+(* Discovery contains only declarations. Resolve a project factory once, before
+   source capture or publication, so no route can fall back to another design. *)
+type variant =
+  { id : string
+  ; label : string
+  ; project : unit -> Project.t Or_error.t
+  }
+
+type chip =
+  { id : string
+  ; label : string
+  ; default : variant
+  ; others : variant list
+  ; catalog : unit -> Flow.Catalog.t
+  ; catalog_inputs : string list
+  }
+
+let router_inputs = [ "asics/fifo_demo/cli/project.ml"; "asics/fifo_demo/cli/dune" ]
+let fifo =
+  { id = "fifo_demo"; label = "Controlled FIFO"
+  ; default = { id = "default"; label = "16 × 8 FIFO"; project = Fifo_asic.project }
+  ; others = []; catalog = (fun () -> Fifo_asic.Flow_catalog.create () |> Or_error.ok_exn)
+  ; catalog_inputs = Fifo_asic.Flow_catalog.source_inputs }
+;;
+
+let chips =
+  let budget id label =
+    { id; label; project = Sram_budget.registered_project ~extra_inputs:router_inputs ~variant_id:id } in
+  [ fifo
+  ; { id = "program_memory"; label = "Program memory"
+    ; default = { id = "default"; label = "Stock 256 × 16 SRAM"
+                ; project = (fun () -> Program_memory.project ~extra_inputs:router_inputs ~operation:Hardening Exact) }
+    ; others = []; catalog = Program_memory.catalog
+    ; catalog_inputs = "asics/program_memory/project/program_memory.ml" :: router_inputs }
+  ; { id = "sram_budget"; label = "Three-bank SRAM budget"
+    ; default = budget "two_slot" "Two SRAM slots"
+    ; others = [ budget "three_slot" "Three SRAM slots" ]; catalog = Sram_budget.catalog
+    ; catalog_inputs = "asics/sram_budget/sram_budget.ml" :: router_inputs } ]
+;;
+
+let resolve chip variant =
+  let find items id get_id kind = List.find items ~f:(fun x -> String.equal (get_id x) id)
+    |> Option.value_or_thunk ~default:(fun () -> bad ("Unknown " ^ kind ^ ": " ^ id)) in
+  let chip = find chips (Option.value chip ~default:fifo.id) (fun c -> c.id) "chip" in
+  let variant = find (chip.default :: chip.others) (Option.value variant ~default:chip.default.id)
+    (fun (v : variant) -> v.id) ("variant of " ^ chip.id) in
+  chip, variant
+;;
+
+let chip_list () =
+  let chip c = `Assoc [ "id", `String c.id; "label", `String c.label;
+    "default_variant", `String c.default.id; "variants", `List (List.map (c.default :: c.others)
+      ~f:(fun (v : variant) -> `Assoc [ "id", `String v.id; "label", `String v.label ])) ] in
+  `Assoc [ "schema_version", `Int 1; "default_chip", `String fifo.id; "chips", `List (List.map chips ~f:chip) ]
+;;
+
+let target_options chip variant =
+  let opt key dest = key, Stdlib.Arg.String (fun id ->
+    if Option.is_some !dest || String.is_empty id || String.is_prefix id ~prefix:"--" then
+      bad ("Duplicate or missing " ^ key);
+    dest := Some id), "ID Registered target" in
+  [ opt "--chip" chip; opt "--variant" variant ]
+;;
+
 let flow_main command args =
+  let chip = ref None and variant = ref None in
   let json = ref false and verbose = ref false in
   let flow = ref None and profile = ref None and endpoint = ref None and expected = ref None in
   let source = ref None and root = ref None and results = ref None and provider = ref None in
@@ -149,7 +232,7 @@ let flow_main command args =
     ; "--set", Stdlib.Arg.String set, "KEY=VALUE Typed supported parameter override (repeatable)"
     ; opt "--source-root" source "PATH Source checkout"
     ; opt "--project-root" root "PATH Source checkout alias" ] in
-  let options = common @ (match command with
+  let options = target_options chip variant @ common @ (match command with
     | "list" -> []
     | "describe" -> [ opt "--flow" flow "ID Required flow ID" ]
     | "plan" -> preparation
@@ -172,8 +255,9 @@ let flow_main command args =
     | _ -> bad "Unknown flow subcommand") in
   Stdlib.Arg.parse_argv ~current:(ref 0) (Array.of_list (("project flow " ^ command) :: args))
     options (fun arg -> bad ("Unexpected argument: " ^ arg)) usage;
-  let catalog = Fifo_asic.Flow_catalog.create () |> checked in
+  let chip, variant = resolve !chip !variant in
   let print value = printf "%s\n%!" (if !json then Yojson.Safe.to_string value else Yojson.Safe.pretty_to_string value) in
+  let catalog = chip.catalog () in
   match command with
   | "list" -> print (Flow_spec.list_to_yojson catalog)
   | "describe" ->
@@ -198,13 +282,13 @@ let flow_main command args =
       | Some a, Some b when not (String.equal (U.realpath (absolute a)) (U.realpath (absolute b))) -> bad "Conflicting --project-root and --source-root"
       | Some a, _ | _, Some a -> Some (absolute a) | _ -> None in
     let source_root = Option.value_or_thunk explicit ~default:discover in
-    let project = Fifo_asic.project () |> Or_error.ok_exn in
+    let project = variant.project () |> Or_error.ok_exn in
     if Option.is_none explicit then List.iter (Project.source_inputs project) ~f:(fun input ->
       let path = Filename.concat source_root input in
       if not (is_file path) || not (String.is_prefix (U.realpath path) ~prefix:(source_root ^ "/"))
       then bad ("Discovered root lacks expected source input: " ^ input));
     let prepared = Methodology_plan.prepare ~catalog ~selection ~request ~endpoint
-      ~catalog_inputs:Fifo_asic.Flow_catalog.source_inputs ?expected_plan_identity:!expected
+      ~catalog_inputs:chip.catalog_inputs ?expected_plan_identity:!expected
       project ~source_root |> Or_error.ok_exn in
      let plan = Methodology_plan.Prepared.plan prepared in
      if String.equal command "plan" then print (Methodology_plan.to_yojson plan)
@@ -223,7 +307,7 @@ let flow_main command args =
          ; "plan", Methodology_plan.to_yojson plan ]))
      else (
       let provider = find_provider !provider in
-      check_named_provider provider;
+      check_named_provider provider ~manifest:(Bundle.manifest (Methodology_plan.Prepared.bundle prepared)) ~endpoint;
       let results = Option.value_map !results ~default:(Filename.concat source_root "_flow_results") ~f:absolute in
       let publication = Bundle.publish (Methodology_plan.Prepared.bundle prepared)
         ~store_dir:(Filename.concat results "bundles") |> Or_error.ok_exn in
@@ -246,6 +330,7 @@ let flow_main command args =
 ;;
 
 let main command args =
+  let chip = ref None and variant = ref None in
   let json = ref false and verbose = ref false and native = ref false in
   let source = ref None and root = ref None and results = ref None and output = ref None in
   let bundle = ref None and tools = ref None and stage = ref None and runs = ref None in
@@ -277,8 +362,12 @@ let main command args =
           "--endpoint", Stdlib.Arg.String (fun s -> endpoint := Some s), "synthesis|floorplan|placement|cts|routing|timing|signoff Explicit-stage endpoint (contract 4)";
          opt "--runs" runs "Classic run store override" ]
     | _ -> bad "Unknown command" in
+  let options = match command with
+    | "describe" | "prepare" | "preview" | "resources" | "emit" -> target_options chip variant @ options
+    | _ -> options in
   Stdlib.Arg.parse_argv ~current:(ref 0) (Array.of_list (("project " ^ command) :: args))
     options (fun arg -> bad ("Unexpected argument: " ^ arg)) usage;
+  let chip, variant = resolve !chip !variant in
   if String.equal command "run" then
      (match !stage, !endpoint with
       | Some _, Some _ -> bad "--stage and --endpoint are mutually exclusive"
@@ -295,14 +384,14 @@ let main command args =
        ~default:(Filename.concat source_root "_flow_results/preparation") ~f:absolute in
      let module E = Hardcaml_asic_execution in
      let request = E.Identity_json.parse (Yojson.Safe.to_string
-       (`Assoc [ "project", `String "fifo"; "source_root", `String source_root ]))
+       (`Assoc [ "project", `String chip.id; "variant", `String variant.id; "source_root", `String source_root ]))
        |> Result.map_error ~f:E.Identity_json.error_message |> Result.ok_or_failwith in
      let outcome = E.Preparation_service.run_cli ~store ~request ~json:!json
        ~prepare:(fun ~on_phase ->
-         let project = Fifo_asic.project () |> Or_error.ok_exn in
+         let project = variant.project () |> Or_error.ok_exn in
          Project.prepare_resources ~on_phase project ~source_root) () in
      Stdlib.exit (Option.value outcome.record.exit_code ~default:1));
-   let project = Fifo_asic.project () |> Or_error.ok_exn in
+   let project = variant.project () |> Or_error.ok_exn in
    if String.equal command "preview" then (
      let source_root = Option.value_or_thunk explicit ~default:discover in
      match Project.prepare_resources project ~source_root with
@@ -386,6 +475,8 @@ let () =
    Stdlib.Random.self_init ();
   try match Sys.get_argv () |> Array.to_list with
     | [_; ("--help" | "-help")] -> printf "%s\n%!" usage
+    | [_; "chip"; "list"; "--json"] -> print_endline (Yojson.Safe.to_string (chip_list ()))
+    | [_; "chip"; "list"] -> print_endline (Yojson.Safe.pretty_to_string (chip_list ()))
     | _ :: "flow" :: command :: args -> flow_main command args
     | [ _; "flow" ] -> bad "A flow subcommand is required"
     | _ :: command :: args -> main command args

@@ -1,0 +1,18 @@
+(library
+ (name sram_budget)
+ (modules sram_budget)
+ (libraries core hardcaml hardcaml_asic)
+ (preprocess (pps ppx_jane)))
+
+(executable
+ (name emit)
+ (modules emit)
+ (libraries core hardcaml_asic sram_budget))
+
+(rule
+ (alias runtest)
+ (deps dune sram_budget.ml emit.ml ../../dune-project ../../asic-dependency.json)
+ (action
+  (run python3 %{dep:check_budget.py} %{exe:emit.exe}
+   %{lib:hardcaml_asic:META} %{workspace_root}
+   %{dep:verif/bank_replay.v})))

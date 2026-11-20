@@ -19,7 +19,7 @@ from workbench_git import clean_environment
 SUITES = ('controlled-fifo', 'pt8-memory-workloads')
 LIMIT = 1024 * 1024
 SOURCE_LAYOUT = 'ownership-v1'
-SOURCE_DIRS = ('ip/controlled_fifo', 'asics/fifo_demo', 'asics/program_memory',
+SOURCE_DIRS = ('ip/controlled_fifo', 'asics/fifo_demo', 'asics/program_memory', 'asics/sram_budget',
                'tooling_acceptance', 'integration/workbench', 'scripts')
 # Only the authored harness, never acceptance result/snapshot directories.
 ACCEPTANCE_FILES = ('asics/fifo_demo/verif/bundle/dune', 'asics/fifo_demo/verif/bundle/export_trace.ml',

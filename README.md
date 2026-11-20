@@ -31,6 +31,7 @@ To reopen this example's **prepared** tools and saved session instead, use
 | [`ip/controlled_fifo/`](ip/controlled_fifo/) | FIFO RTL, independent model, stimulus, Cyclesim verification, and simulation provider |
 | [`asics/fifo_demo/`](asics/fifo_demo/) | TT wrapper, ASIC project/flows, CLI, whole-wrapper verification and bundle replay |
 | [`asics/program_memory/`](asics/program_memory/README.md) | Program-memory SRAM project, behavioral verification, and physical qualification harness |
+| [`asics/sram_budget/`](asics/sram_budget/README.md) | Three identical RAM requests competing for a project-level SRAM instance budget |
 | [`tooling_acceptance/timing/`](tooling_acceptance/timing/) | Five-register timing fixture and basic/named-flow/physical API qualification |
 | [`tooling_acceptance/variants/`](tooling_acceptance/variants/README.md) | Parameterized memory constructor and conformance qualification |
 | [`tooling_acceptance/workloads/`](tooling_acceptance/workloads/) | Workload execution/result qualification |
@@ -99,6 +100,36 @@ an explicit RTL skip if they are unavailable. Shared CLI/dependency checks remai
 under `dune runtest -j6 scripts`.
 
 ## Project CLI
+
+`chip list --json` lists the chips and variants built into the project executable.
+The same `--chip ID` and `--variant ID` selectors apply to `flow list`, `describe`,
+`plan`, `emit`, and `run`. Omitting both selects the original FIFO. Omitting only
+the variant selects that chip's default.
+
+| Chip | Variant | Named flow / default profile | Latest endpoint |
+| --- | --- | --- | --- |
+| `fifo_demo` (default) | `default` | `standard` / `balanced` | `signoff` |
+| `program_memory` | `default` | `stock256-r0` / `qualification` | `timing` |
+| `sram_budget` | `two_slot` (default), `three_slot` | `standard` / `balanced` | `synthesis` |
+
+To inspect the three-slot design without starting any EDA tools:
+
+```sh
+dune build asics/fifo_demo/cli/project.exe
+project=_build/default/asics/fifo_demo/cli/project.exe
+"$project" chip list --json
+"$project" flow plan --chip sram_budget --variant three_slot --endpoint synthesis --json > /tmp/budget-plan.json
+jq '{project_name, variant: (.bundle_manifest | fromjson | .hardware_variant.assignments)}' /tmp/budget-plan.json
+"$project" flow emit --chip sram_budget --variant three_slot --endpoint synthesis \
+  --expected-plan-identity "$(jq -r .plan_identity /tmp/budget-plan.json)" --json
+```
+
+The two-slot bundle implements `bank2` with flops; the three-slot bundle maps
+all three banks to stock SRAM. Their bundles and plan identities differ. Building
+the multi-chip CLI requires the `hardcaml_asic` macro-limit API and schema-1
+named synthesis planner; running a budget plan requires `sram_synthesis1` on
+the execution provider. See [the SRAM budget example](asics/sram_budget/README.md)
+for behavioral replay and setup against the sibling provider checkout.
 
 ```sh
 dune exec -j6 asics/fifo_demo/cli/project.exe -- describe --json

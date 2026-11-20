@@ -69,3 +69,12 @@
        ../asics/fifo_demo/cli/dune ../asics/fifo_demo/cli/project.ml)
  (action (run python3 -B %{dep:test_headless_flow.py} %{exe:../asics/fifo_demo/cli/project.exe}
               %{exe:../asics/fifo_demo/verif/bundle/export_trace.exe} ..)))
+
+(rule
+ (alias runtest)
+ (deps ../asic-dependency.json ../dune-project ../README.md
+       (source_tree ../ip/controlled_fifo/rtl)
+       (source_tree ../asics/fifo_demo/cli) (source_tree ../asics/fifo_demo/project)
+       (source_tree ../asics/fifo_demo/rtl) (source_tree ../asics/program_memory/project)
+       ../asics/program_memory/README.md ../asics/sram_budget/dune ../asics/sram_budget/sram_budget.ml)
+ (action (run python3 -B %{dep:test_chip_routing.py} %{exe:../asics/fifo_demo/cli/project.exe} %{workspace_root})))

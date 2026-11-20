@@ -70,7 +70,7 @@ end
 
 let source_inputs =
   [ "dune-project"; "asic-dependency.json"; "asics/program_memory/project/dune"
-  ; "asics/program_memory/project/program_memory.ml"; "asics/program_memory/project/memory_cli.ml"; "asics/program_memory/README.md"
+  ; "asics/program_memory/project/program_memory.ml"; "asics/program_memory/README.md"
   ]
 ;;
 
@@ -81,7 +81,7 @@ let policy requirement =
 ;;
 
 (* Keep existing OCaml callers' operation defaults. The CLI always supplies one. *)
-let project ?(with_macro_intent = true) ?(depth = 256) ?operation requirement =
+let project ?(extra_inputs = [ "asics/program_memory/project/memory_cli.ml" ]) ?(with_macro_intent = true) ?(depth = 256) ?operation requirement =
   let open Or_error.Let_syntax in
   let%bind policy = policy requirement in
   let operation =
@@ -120,7 +120,7 @@ let project ?(with_macro_intent = true) ?(depth = 256) ?operation requirement =
     include Tt
     let create = Tt.create_with_depth depth
   end in
-  Project.create ~source_inputs ~name:"program_memory_specimen"
+  Project.create ~source_inputs:(source_inputs @ extra_inputs) ~name:"program_memory_specimen"
     ~metadata:
       { title = "Program memory"; author = "hardcaml_asic_example"
       ; description = "Registered 256x16 1RW latency-one memory consumer"
@@ -149,4 +149,18 @@ let project ?(with_macro_intent = true) ?(depth = 256) ?operation requirement =
            in
            { Pinout.bank; bit; description })))
     ~policy ()
+;;
+
+let catalog () =
+  let methodology = Flow.Methodology.create ~id:"stock256-r0" ~label:"Stock 256x16 R0"
+    ~description:"Bounded program-memory qualification through Timing"
+    ~backend_recipe:Librelane_classic_v1
+    ~endpoints:[ Synthesis; Floorplan; Placement; Cts; Routing; Timing ]
+    ~configurable:Flow.Parameter.Key.all ~defaults:[] |> Or_error.ok_exn in
+  let profile = Flow.Profile.create ~id:"qualification" ~label:"Qualification"
+    ~description:"Unmodified public stock physical settings" ~assignments:[] |> Or_error.ok_exn in
+  let entry = Flow.Catalog.Entry.create ~methodology ~profiles:[profile]
+    ~default_profile:"qualification" |> Or_error.ok_exn in
+  Flow.Catalog.create ~entries:[entry] ~default_flow:"stock256-r0"
+    ~default_profile:"qualification" |> Or_error.ok_exn
 ;;
