@@ -1,8 +1,9 @@
 /_build*/
 /.dev/
+/dune-workspace
 __pycache__/
 *.py[cod]
-/_flow_tools/
+/_flow_tools
 /_flow_results/
 
 # Retained acceptance attempts: prune raw trees, keep phase-level helpers visible.
