@@ -9,7 +9,7 @@ let catalog_inputs =
   ]
 ;;
 
-let project () = Program_memory.project ~operation:Hardening Exact |> Or_error.ok_exn
+let project () = Program_memory.chip_target ~operation:Hardening Exact |> Or_error.ok_exn
 
 let catalog = Program_memory.catalog
 
@@ -17,7 +17,7 @@ let prepare source_root endpoint =
   let project = project () in
   let catalog = catalog () in
   let methodology = Flow.Catalog.resolve catalog ~endpoint () |> Or_error.ok_exn in
-  let preparation = match Project.prepare_resources ~methodology
+  let preparation = match Chip_target.prepare_resources ~methodology
     ~catalog_inputs project ~source_root with
     | Ok p -> p
     | Error e -> failwith (Yojson.Safe.to_string (Resource_preparation.Failure.to_json e)) in
@@ -169,14 +169,14 @@ let preparation_main command args =
      @ if String.equal command "prepare" then [ "--results-root" ] else []) args in
   if String.equal command "describe" then (
     let project = project () in
-    print options (`Assoc [ "project_name", `String (Project.name project)
-      ; "declaration_sexp", `String (Sexp.to_string_hum (Project.describe project)) ]))
+    print options (`Assoc [ "project_name", `String (Chip_target.name project)
+      ; "declaration_sexp", `String (Sexp.to_string_hum (Chip_target.describe project)) ]))
   else (
     let source_root = source_root options in
     let endpoint = Option.value options.endpoint ~default:"timing" |> Flow.Stage.of_string |> checked in
     let methodology = Flow.Catalog.resolve ~selection:(selected options) ~request:options.request
       (catalog ()) ~endpoint () |> checked in
-    let prepare ~on_phase = Project.prepare_resources ~on_phase ~methodology ~catalog_inputs (project ()) ~source_root in
+    let prepare ~on_phase = Chip_target.prepare_resources ~on_phase ~methodology ~catalog_inputs (project ()) ~source_root in
     if String.equal command "preview" then (
       match prepare ~on_phase:(fun _ -> ()) with
       | Ok result -> print options (Resource_preparation.to_json result)

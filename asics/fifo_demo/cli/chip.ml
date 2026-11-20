@@ -2,7 +2,12 @@ module U = Unix
 open! Core
 open Hardcaml_asic
 
-let usage = "Usage: project describe | prepare | preview | resources | emit | preflight | run [OPTIONS]\n       project chip list [--json]\n       project flow list | describe | plan | emit | run [--chip ID] [--variant ID] [OPTIONS]"
+let usage =
+  "Usage: chip list [--json]\n\
+   \       chip describe | prepare | preview | resources | emit [--chip ID] [--variant ID] [OPTIONS]\n\
+   \       chip flow list | describe | plan | emit | run [--chip ID] [--variant ID] [OPTIONS]\n\
+   \       chip preflight | run [OPTIONS]\n\
+   List shows this CLI's chip targets and variants. For the enclosing project catalog, run hardcaml-asic-targets list."
 let bad message = raise (Stdlib.Arg.Bad (message ^ "\n" ^ usage))
 (* Executable paths must retain symlink-parent/.. traversal and venv aliases. *)
 let anchor_executable path =
@@ -131,7 +136,7 @@ let immutable_plan_file path contents =
 type variant =
   { id : string
   ; label : string
-  ; project : unit -> Project.t Or_error.t
+  ; chip_target : unit -> Chip_target.t Or_error.t
   }
 
 type chip =
@@ -143,21 +148,21 @@ type chip =
   ; catalog_inputs : string list
   }
 
-let router_inputs = [ "asics/fifo_demo/cli/project.ml"; "asics/fifo_demo/cli/dune" ]
+let router_inputs = [ "asics/fifo_demo/cli/chip.ml"; "asics/fifo_demo/cli/dune" ]
 let fifo =
   { id = "fifo_demo"; label = "Controlled FIFO"
-  ; default = { id = "default"; label = "16 × 8 FIFO"; project = Fifo_asic.project }
+  ; default = { id = "default"; label = "16 × 8 FIFO"; chip_target = Fifo_asic.chip_target }
   ; others = []; catalog = (fun () -> Fifo_asic.Flow_catalog.create () |> Or_error.ok_exn)
   ; catalog_inputs = Fifo_asic.Flow_catalog.source_inputs }
 ;;
 
 let chips =
   let budget id label =
-    { id; label; project = Sram_budget.registered_project ~extra_inputs:router_inputs ~variant_id:id } in
+    { id; label; chip_target = Sram_budget.registered_chip_target ~extra_inputs:router_inputs ~variant_id:id } in
   [ fifo
   ; { id = "program_memory"; label = "Program memory"
     ; default = { id = "default"; label = "Stock 256 × 16 SRAM"
-                ; project = (fun () -> Program_memory.project ~extra_inputs:router_inputs ~operation:Hardening Exact) }
+                ; chip_target = (fun () -> Program_memory.chip_target ~extra_inputs:router_inputs ~operation:Hardening Exact) }
     ; others = []; catalog = Program_memory.catalog
     ; catalog_inputs = "asics/program_memory/project/program_memory.ml" :: router_inputs }
   ; { id = "sram_budget"; label = "Three-bank SRAM budget"
@@ -166,10 +171,48 @@ let chips =
     ; catalog_inputs = "asics/sram_budget/sram_budget.ml" :: router_inputs } ]
 ;;
 
-let resolve chip variant =
+(* Silver invokes the configured CLI in the project root. Also allow invocation
+   from a project subdirectory; don't read a parent project's catalog. Older
+   checkouts without a manifest keep their compiled-in routes. *)
+let rec project_catalog dir =
+  let path = Filename.concat dir Chip_catalog.filename in
+  match U.lstat path with
+  | _ -> Some (Chip_catalog.load path |> Or_error.ok_exn)
+  | exception U.Unix_error (U.ENOENT, _, _) ->
+    let parent = Filename.dirname dir in
+    if String.equal dir parent || is_file (Filename.concat dir "dune-project") then None
+    else project_catalog parent
+;;
+
+let catalog_entries root =
+  project_catalog (Option.value_map root ~default:(U.getcwd ()) ~f:absolute)
+  |> Option.value_map ~default:[] ~f:Chip_catalog.entries
+;;
+
+let forward (entry : Chip_catalog.entry) =
+  let guard = "HARDCAML_ASIC_FORWARDED_TARGET" in
+  if Option.is_some (Sys.getenv guard) then bad "Catalog executable does not declare the selected chip";
+  let self = U.realpath Stdlib.Sys.executable_name in
+  let context =
+    List.find_map [ "chip.exe"; "project.exe" ] ~f:(fun name ->
+      String.chop_suffix self ~suffix:("/asics/fifo_demo/cli/" ^ name))
+    |> Option.value_or_thunk ~default:(fun () -> bad "Cannot locate FIFO CLI Dune build context")
+  in
+  let path = Filename.concat context entry.executable in
+  if not (is_file path) then bad ("Build the selected chip target in this context: " ^ entry.executable);
+  let argv = Sys.get_argv () in
+  argv.(0) <- path;
+  U.execve path argv (Array.append (U.environment ()) [| guard ^ "=" ^ entry.id |])
+;;
+
+let resolve ?root chip variant =
   let find items id get_id kind = List.find items ~f:(fun x -> String.equal (get_id x) id)
     |> Option.value_or_thunk ~default:(fun () -> bad ("Unknown " ^ kind ^ ": " ^ id)) in
-  let chip = find chips (Option.value chip ~default:fifo.id) (fun c -> c.id) "chip" in
+  let id = Option.value chip ~default:fifo.id in
+  if not (List.exists chips ~f:(fun c -> String.equal c.id id)) then (
+    let entry = find (catalog_entries root) id (fun (e : Chip_catalog.entry) -> e.id) "chip" in
+    forward entry);
+  let chip = find chips id (fun c -> c.id) "chip" in
   let variant = find (chip.default :: chip.others) (Option.value variant ~default:chip.default.id)
     (fun (v : variant) -> v.id) ("variant of " ^ chip.id) in
   chip, variant
@@ -179,7 +222,11 @@ let chip_list () =
   let chip c = `Assoc [ "id", `String c.id; "label", `String c.label;
     "default_variant", `String c.default.id; "variants", `List (List.map (c.default :: c.others)
       ~f:(fun (v : variant) -> `Assoc [ "id", `String v.id; "label", `String v.label ])) ] in
-  `Assoc [ "schema_version", `Int 1; "default_chip", `String fifo.id; "chips", `List (List.map chips ~f:chip) ]
+  let extra = List.filter_map (catalog_entries None) ~f:(fun (e : Chip_catalog.entry) ->
+    if List.exists chips ~f:(fun c -> String.equal c.id e.id) then None
+    else Some (`Assoc [ "id", `String e.id; "label", `String e.id; "default_variant", `String "default";
+                        "variants", `List [`Assoc ["id", `String "default"; "label", `String "Default"]] ])) in
+  `Assoc [ "schema_version", `Int 1; "default_chip", `String fifo.id; "chips", `List (List.map chips ~f:chip @ extra) ]
 ;;
 
 let target_options chip variant =
@@ -253,9 +300,9 @@ let flow_main command args =
            timeout := Some (Int.to_string seconds)), "SECONDS Positive integer per segment/publication budget (provider default 600)"
        ; opt "--python" python "PATH Flow interpreter" ]
     | _ -> bad "Unknown flow subcommand") in
-  Stdlib.Arg.parse_argv ~current:(ref 0) (Array.of_list (("project flow " ^ command) :: args))
+  Stdlib.Arg.parse_argv ~current:(ref 0) (Array.of_list (("chip flow " ^ command) :: args))
     options (fun arg -> bad ("Unexpected argument: " ^ arg)) usage;
-  let chip, variant = resolve !chip !variant in
+  let chip, variant = resolve ?root:(Option.first_some !root !source) !chip !variant in
   let print value = printf "%s\n%!" (if !json then Yojson.Safe.to_string value else Yojson.Safe.pretty_to_string value) in
   let catalog = chip.catalog () in
   match command with
@@ -282,8 +329,8 @@ let flow_main command args =
       | Some a, Some b when not (String.equal (U.realpath (absolute a)) (U.realpath (absolute b))) -> bad "Conflicting --project-root and --source-root"
       | Some a, _ | _, Some a -> Some (absolute a) | _ -> None in
     let source_root = Option.value_or_thunk explicit ~default:discover in
-    let project = variant.project () |> Or_error.ok_exn in
-    if Option.is_none explicit then List.iter (Project.source_inputs project) ~f:(fun input ->
+    let project = variant.chip_target () |> Or_error.ok_exn in
+    if Option.is_none explicit then List.iter (Chip_target.source_inputs project) ~f:(fun input ->
       let path = Filename.concat source_root input in
       if not (is_file path) || not (String.is_prefix (U.realpath path) ~prefix:(source_root ^ "/"))
       then bad ("Discovered root lacks expected source input: " ^ input));
@@ -365,9 +412,9 @@ let main command args =
   let options = match command with
     | "describe" | "prepare" | "preview" | "resources" | "emit" -> target_options chip variant @ options
     | _ -> options in
-  Stdlib.Arg.parse_argv ~current:(ref 0) (Array.of_list (("project " ^ command) :: args))
+  Stdlib.Arg.parse_argv ~current:(ref 0) (Array.of_list (("chip " ^ command) :: args))
     options (fun arg -> bad ("Unexpected argument: " ^ arg)) usage;
-  let chip, variant = resolve !chip !variant in
+  let chip, variant = resolve ?root:(Option.first_some !root !source) !chip !variant in
   if String.equal command "run" then
      (match !stage, !endpoint with
       | Some _, Some _ -> bad "--stage and --endpoint are mutually exclusive"
@@ -388,28 +435,28 @@ let main command args =
        |> Result.map_error ~f:E.Identity_json.error_message |> Result.ok_or_failwith in
      let outcome = E.Preparation_service.run_cli ~store ~request ~json:!json
        ~prepare:(fun ~on_phase ->
-         let project = variant.project () |> Or_error.ok_exn in
-         Project.prepare_resources ~on_phase project ~source_root) () in
+         let project = variant.chip_target () |> Or_error.ok_exn in
+         Chip_target.prepare_resources ~on_phase project ~source_root) () in
      Stdlib.exit (Option.value outcome.record.exit_code ~default:1));
-   let project = variant.project () |> Or_error.ok_exn in
+   let project = variant.chip_target () |> Or_error.ok_exn in
    if String.equal command "preview" then (
      let source_root = Option.value_or_thunk explicit ~default:discover in
-     match Project.prepare_resources project ~source_root with
+     match Chip_target.prepare_resources project ~source_root with
      | Ok prepared -> printf "%s%!" (Resource_preparation.to_string prepared); Stdlib.exit 0
      | Error failure ->
        printf "%s\n%!" (Yojson.Safe.pretty_to_string (Resource_preparation.Failure.to_json failure));
        Stdlib.exit 1);
    if String.equal command "resources" then (
      let view = if !simulation then
-       Project.elaborate project ~mode:Simulation |> Or_error.ok_exn
+       Chip_target.elaborate project ~mode:Simulation |> Or_error.ok_exn
        |> Resource_snapshot.of_elaborated
-     else Project.elaborate_for_flow project |> Or_error.ok_exn |> Resource_snapshot.of_resolved in
+     else Chip_target.elaborate_for_flow project |> Or_error.ok_exn |> Resource_snapshot.of_resolved in
      printf "%s\n%!" (Yojson.Safe.pretty_to_string (Resource_snapshot.to_json view));
      Stdlib.exit 0);
   if String.equal command "describe" then (
-    let declaration = Sexp.to_string_hum (Project.describe project) in
+    let declaration = Sexp.to_string_hum (Chip_target.describe project) in
     if !json then printf "%s\n%!" (Yojson.Safe.to_string (`Assoc
-       [ "project_name", `String (Project.name project); "declaration_sexp", `String declaration ]))
+       [ "project_name", `String (Chip_target.name project); "declaration_sexp", `String declaration ]))
     else printf "%s\n%!" declaration;
     if !verbose then eprintf "Local declaration; not a Workbench protocol payload.\n%!")
   else (
@@ -423,17 +470,17 @@ let main command args =
        | Some path -> check_provider path ~endpoint:(Option.is_some !endpoint); Some path
         | None -> failwith "hardcaml-asic-flow is not on PATH; install/activate a compatible provider (CLI contract 2, 3 or 4).") else None in
     let emit () =
-      if Option.is_none explicit then List.iter (Project.source_inputs project) ~f:(fun input ->
+      if Option.is_none explicit then List.iter (Chip_target.source_inputs project) ~f:(fun input ->
         let path = Filename.concat root input in
         if not (is_file path) || not (String.is_prefix (U.realpath path) ~prefix:(root ^ "/"))
         then bad ("Discovered root lacks expected source input: " ^ input));
       match !output with
       | Some dir when String.equal command "emit" ->
         let dir = absolute dir in
-        let b = Project.emit_bundle project ~source_root:root ~output_dir:dir |> Or_error.ok_exn in
+        let b = Chip_target.emit_bundle project ~source_root:root ~output_dir:dir |> Or_error.ok_exn in
         b, dir, false
       | _ ->
-        let b, publication = Project.emit_bundle_to_store project ~source_root:root
+        let b, publication = Chip_target.emit_bundle_to_store project ~source_root:root
           ~store_dir:(Filename.concat results "bundles") |> Or_error.ok_exn in
         b, publication.directory, publication.reused in
     if String.equal command "emit" then (
@@ -474,9 +521,9 @@ let main command args =
 let () =
    Stdlib.Random.self_init ();
   try match Sys.get_argv () |> Array.to_list with
-    | [_; ("--help" | "-help")] -> printf "%s\n%!" usage
-    | [_; "chip"; "list"; "--json"] -> print_endline (Yojson.Safe.to_string (chip_list ()))
-    | [_; "chip"; "list"] -> print_endline (Yojson.Safe.pretty_to_string (chip_list ()))
+    | [_; ("--help" | "-help")] | [_; "list"; "--help"] -> printf "%s\n%!" usage
+    | [_; "list"; "--json"] | [_; "chip"; "list"; "--json"] -> print_endline (Yojson.Safe.to_string (chip_list ()))
+    | [_; "list"] | [_; "chip"; "list"] -> print_endline (Yojson.Safe.pretty_to_string (chip_list ()))
     | _ :: "flow" :: command :: args -> flow_main command args
     | [ _; "flow" ] -> bad "A flow subcommand is required"
     | _ :: command :: args -> main command args
@@ -484,4 +531,4 @@ let () =
   with
   | Stdlib.Arg.Bad message -> eprintf "%s\n%!" message; Stdlib.exit 2
   | Stdlib.Arg.Help message -> printf "%s%!" message
-    | exn -> eprintf "project failed: %s\nUse a committed source checkout with the declared inputs and a compatible installed provider (CLI contract 2, 3 or 4).\n%!" (Exn.to_string exn); Stdlib.exit 1
+    | exn -> eprintf "chip target failed: %s\nUse a committed source checkout with the declared inputs and a compatible installed provider (CLI contract 2, 3 or 4).\n%!" (Exn.to_string exn); Stdlib.exit 1

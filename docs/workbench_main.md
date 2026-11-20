@@ -111,7 +111,7 @@ Defaults:
 * Prebuilt Workbench pair: sibling
   `silver/_build_pt8_workbench/default/{daemon,terminal}/main.exe`.
 * Root ASIC project executable:
-  `_build/default/asics/fifo_demo/cli/project.exe`.
+  `_build/default/asics/fifo_demo/cli/chip.exe`.
 * Results: `_flow_results/workbench/{asic,preparation}`.
 
 `prepare` supports `--asic-generation`, `--sdk-prefix`, `--wb-build-root`, and

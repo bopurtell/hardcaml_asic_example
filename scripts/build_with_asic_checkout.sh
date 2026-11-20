@@ -22,5 +22,5 @@ export OCAMLPATH="$prefix/lib:$sdk/lib${OCAMLPATH:+:$OCAMLPATH}"
 export PATH="$prefix/bin:$PATH"
 unset HARDCAML_ASIC_GENERATION
 cd "$example"
-if (( $# == 0 )); then set -- asics/fifo_demo/cli/project.exe; fi
+if (( $# == 0 )); then set -- asics/fifo_demo/cli/chip.exe asics/program_memory/cli/chip.exe; fi
 exec dune build --root . --build-dir "$build" -j4 "$@"

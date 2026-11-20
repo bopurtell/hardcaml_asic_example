@@ -77,7 +77,7 @@ For a bounded compiler check, run from this checkout:
 
 ```sh
 opam exec --switch=5.2.0+ox -- bash scripts/with_asic.sh \
-  dune build -j6 asics/fifo_demo/cli/project.exe
+  dune build -j6 asics/fifo_demo/cli/chip.exe
 ```
 
 A daemon already running without that environment needs an explicit user-managed

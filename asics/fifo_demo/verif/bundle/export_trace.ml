@@ -4,8 +4,8 @@ open Fifo_test_support
 let () =
   match Sys.get_argv () |> Array.to_list with
   | [ _; "--inputs" ] ->
-    let project = Fifo_asic.project () |> Or_error.ok_exn in
-    List.iter (Hardcaml_asic.Project.source_inputs project) ~f:(printf "%s\n")
+    let project = Fifo_asic.chip_target () |> Or_error.ok_exn in
+    List.iter (Hardcaml_asic.Chip_target.source_inputs project) ~f:(printf "%s\n")
   | [ _ ] ->
     List.iter [ directed (); regression ~seed:20261012 ~cycles:4096 ] ~f:(fun trace ->
       List.iteri trace ~f:(fun index (t : Trace.t) ->

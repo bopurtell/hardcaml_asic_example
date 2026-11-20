@@ -19,7 +19,7 @@ from pt8_workloads import validate_waveform
 
 def protected():
     paths = list(ROOT.glob('hardcaml-workbench*.sexp')) + [ROOT / 'asic-dependency.json',
-        ROOT / 'asics/fifo_demo/verif/bundle/dune', ROOT / 'asics/fifo_demo/project/project.ml']
+        ROOT / 'asics/fifo_demo/verif/bundle/dune', ROOT / 'asics/fifo_demo/project/fifo_chip.ml']
     for path in ROOT.glob('hardcaml-workbench*.sexp'):
         for key, value in parse(path.read_text()):
             if key in ('provider_executable', 'project_executable'):

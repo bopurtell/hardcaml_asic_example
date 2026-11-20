@@ -1,6 +1,9 @@
 """Exercise compiled consumer routes, resource selection and actual bundle publication."""
 import json
+import math
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -17,17 +20,54 @@ def cli(*args, ok=True):
     assert p.returncode == 0, (args, p.stderr)
     return json.loads(p.stdout)
 
+def check_clock_and_ip(manifest, period_ns, *, fifo_ip):
+    settings = {row['key']: row for row in manifest['resolved_settings']}
+    assert settings['CLOCK_PORT']['owner'] == settings['CLOCK_PERIOD']['owner'] == 'Clock'
+    assert settings['CLOCK_PORT']['value'] == 'clk'
+    assert math.isclose(settings['CLOCK_PERIOD']['value'], period_ns)
+    sources = {entry['path'] for entry in manifest['source_inputs']}
+    assert ('ip/controlled_fifo/rtl/controlled_fifo.ml' in sources) == fifo_ip
+
 
 with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
     store = Path(directory) / 'store'
-    catalog = cli('chip', 'list')
+    catalog = cli('list')
+    assert cli('chip', 'list') == catalog  # pre-migration invocation
     chips = {c['id']: c for c in catalog['chips']}
     assert catalog['schema_version'] == 1 and catalog['default_chip'] == 'fifo_demo'
-    assert set(chips) == {'fifo_demo', 'program_memory', 'sram_budget'}
+    project_catalog = json.loads((ROOT / 'hardcaml-asic-targets.json').read_text())
+    assert len(chips) == len(catalog['chips'])
+    assert set(chips) == {'fifo_demo', 'program_memory', 'sram_budget'} | {
+        row['id'] for row in project_catalog['targets']}
     assert all(c['default_variant'] in {v['id'] for v in c['variants']} for c in chips.values())
+    # A fresh registration is visible before its executable is built. Verify
+    # dispatch uses the compatibility router's own context and preserves argv.
+    project = Path(directory) / 'project'
+    context = project / 'custom-build/release'
+    router = context / 'asics/fifo_demo/cli/project.exe'
+    router.parent.mkdir(parents=True)
+    try:
+        os.link(EXE, router)
+    except OSError:
+        shutil.copy2(EXE, router)
+    entry = {'id': 'new_chip', 'executable': 'custom/location/project.exe'}
+    (project / 'hardcaml-asic-targets.json').write_text(json.dumps(
+        {'schema_version': 1, 'default_target': 'new_chip', 'targets': [entry]}))
+    def routed(*args):
+        return subprocess.run([router, *args], cwd=project, capture_output=True, text=True)
+    assert json.loads(routed('chip', 'list', '--json').stdout)['chips'][-1]['id'] == 'new_chip'
+    argv = ['flow', 'describe', '--flow', 'standard', '--chip', 'new_chip', '--variant', 'default', '--json']
+    missing = routed(*argv)
+    assert missing.returncode and entry['executable'] in missing.stderr and not missing.stdout
+    child = context / entry['executable']
+    child.parent.mkdir(parents=True)
+    child.write_text('#!/usr/bin/env python3\nimport json, sys\nprint(json.dumps(sys.argv[1:]))\n')
+    child.chmod(0o755)
+    assert json.loads(routed(*argv).stdout) == argv
     baseline = cli('flow', 'plan', '--endpoint', 'synthesis')
     assert baseline == cli('flow', 'plan', '--chip', 'fifo_demo', '--variant', 'default', '--endpoint', 'synthesis')
     assert json.loads(baseline['bundle_manifest'])['top_module'] == 'tt_um_controlled_fifo'
+    check_clock_and_ip(json.loads(baseline['bundle_manifest']), 1000 / 48, fifo_ip=True)
 
     target = ['--chip', 'program_memory', '--variant', 'default']
     flow = cli('flow', 'list', *target)['declaration']
@@ -45,6 +85,7 @@ with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
     manifest = json.loads((Path(emitted['output_dir']) / 'manifest.json').read_text())
     assert emitted['plan'] == plan and manifest == json.loads(plan['bundle_manifest'])
     assert manifest['top_module'] == 'tt_um_program_memory' and manifest['macro_contract']['schema_version'] == 2
+    check_clock_and_ip(manifest, 1000 / 48, fifo_ip=False)
     assert 'asics/program_memory/project/program_memory.ml' in {f['path'] for f in manifest['source_inputs']}
 
     budgets = chips['sram_budget']
@@ -64,6 +105,7 @@ with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
         ids.append(plan['plan_identity'])
         bundle = Path(receipt['output_dir'])
         m = json.loads((bundle / 'manifest.json').read_text())
+        check_clock_and_ip(m, 20, fifo_ip=False)
         assert m == json.loads(plan['bundle_manifest'])
         assert m['identity'] == receipt['bundle_identity'] and m['top_module'] == 'tt_um_sram_budget'
         assert m['hardware_variant']['assignments'] == {'bank_variant': variant}
@@ -78,7 +120,7 @@ with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
         assert cli('flow', *run) == plan
         provider.write_text(provider.read_text().replace("'sram_synthesis1':True", "'sram_synthesis1':False"))
         assert 'sram_synthesis1' in cli('flow', *run, ok=False)
-        assert {f['path'] for f in m['source_inputs']} >= {'asics/sram_budget/sram_budget.ml', 'asics/fifo_demo/cli/project.ml'}
+        assert {f['path'] for f in m['source_inputs']} >= {'asics/sram_budget/sram_budget.ml', 'asics/fifo_demo/cli/chip.ml'}
         assert not any('fifo_demo/project/' in f['path'] for f in m['source_inputs'])
         rows = {r['id']['display']: r for r in m['resource_snapshot']['resources']}
         assert set(rows) == {'bank0', 'bank1', 'bank2'}

@@ -32,7 +32,7 @@ module Design = struct
   ;;
 end
 
-let project ?(extra_inputs = []) ~budget () =
+let chip_target ?(extra_inputs = []) ~budget () =
   let policy =
     Resource_policy.create ~default:Exact_or_flop_fallback
       ~macro_limits:[ stock_macro, budget ] []
@@ -49,7 +49,7 @@ let project ?(extra_inputs = []) ~budget () =
       in
       { Pinout.bank; bit; description }))
   in
-  Project.create ~name:"sram_budget"
+  Chip_target.create ~name:"sram_budget"
     ~metadata:{ title = "Three-bank SRAM budget"; author = "hardcaml_asic_example"
               ; description = sprintf "Three 256x16 banks, %d SRAM slots" budget }
     ~source_inputs:(extra_inputs @ ["dune-project"; "asic-dependency.json"; "asics/sram_budget/dune";
@@ -63,7 +63,9 @@ let project ?(extra_inputs = []) ~budget () =
 
 (* The manifest records the selected bank configuration as well as its effect
    on all three resolved requests. Derive the limit from the checked value. *)
-let registered_project ~extra_inputs ~variant_id () =
+let project = chip_target
+
+let registered_chip_target ~extra_inputs ~variant_id () =
   let open Or_error.Let_syntax in
   let key = "bank_variant" in
   let slots = [ "two_slot", 2; "three_slot", 3 ] in
@@ -72,10 +74,12 @@ let registered_project ~extra_inputs ~variant_id () =
   let%bind schema = Hardware_variant.Schema.create ~design_id:"sram_budget"
     ~schema_id:"sram_budget.v1" ~parameters:[parameter] in
   let%bind variant = Hardware_variant.create ~schema ~assignments:[key, Enum variant_id] in
-  Project.of_variant ~variant ~create:(fun checked ->
+  Chip_target.of_variant ~variant ~create:(fun checked ->
     let%bind id = Hardware_variant.get_enum checked ~key in
-    project ~extra_inputs ~budget:(List.Assoc.find_exn slots id ~equal:String.equal) ())
+    chip_target ~extra_inputs ~budget:(List.Assoc.find_exn slots id ~equal:String.equal) ())
 ;;
+
+let registered_project = registered_chip_target
 
 let catalog () =
   let methodology = Flow.Methodology.create ~id:"standard" ~label:"Standard"

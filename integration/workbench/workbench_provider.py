@@ -24,7 +24,8 @@ SOURCE_DIRS = ('ip/controlled_fifo', 'asics/fifo_demo', 'asics/program_memory', 
 # Only the authored harness, never acceptance result/snapshot directories.
 ACCEPTANCE_FILES = ('asics/fifo_demo/verif/bundle/dune', 'asics/fifo_demo/verif/bundle/export_trace.ml',
                     'asics/fifo_demo/verif/bundle/check_bundle.py', 'asics/fifo_demo/verif/bundle/replay.v')
-SOURCE_FILES = ('dune-project', 'asic-dependency.json', 'README.md', 'bootstrap.sh', *ACCEPTANCE_FILES)
+SOURCE_FILES = ('dune-project', 'asic-dependency.json', 'hardcaml-asic-targets.json',
+                'README.md', 'bootstrap.sh', *ACCEPTANCE_FILES)
 SUITE_PATHS = {
     'controlled-fifo': ('dune-project', 'ip/controlled_fifo/rtl',
         'ip/controlled_fifo/verif/simulation', 'ip/controlled_fifo/verif/support',

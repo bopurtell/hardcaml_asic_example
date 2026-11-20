@@ -6,9 +6,9 @@ let require label condition = if not condition then failwith label
 let near a b = Float.(abs (a -. b) < 1e-6)
 
 let () =
-  let project = Fifo_asic.project () |> Or_error.ok_exn in
-  let r = Project.elaborate_for_flow project |> Or_error.ok_exn in
-  let simulation_project = Project.elaborate project ~mode:Simulation |> Or_error.ok_exn in
+  let project = Fifo_asic.chip_target () |> Or_error.ok_exn in
+  let r = Chip_target.elaborate_for_flow project |> Or_error.ok_exn in
+  let simulation_project = Chip_target.elaborate project ~mode:Simulation |> Or_error.ok_exn in
   let check_elaborated_project elaborated_project =
     let circuit = Elaborated_project.circuit elaborated_project in
     require "exact top" (String.equal (Circuit.name circuit) "tt_um_controlled_fifo");

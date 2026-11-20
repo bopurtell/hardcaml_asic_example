@@ -1,6 +1,6 @@
 # Three memory banks sharing an SRAM budget
 
-Each bank requests the same 256×16 single-port RAM. The project gives all three
+Each bank requests the same 256×16 single-port RAM. The chip target gives all three
 the same requirement and caps the number of instances of the stock IHP SRAM:
 
 ```ocaml
@@ -10,15 +10,15 @@ Resource_policy.create ~default:Exact_or_flop_fallback ~macro_limits:[ stock_mac
 The banks register in order. With two slots, `bank0` and `bank1` receive the
 macro; `bank2` falls back to flops because the budget is exhausted. With
 three slots, `bank2` also receives the macro. In both cases it requested the
-same implementation policy. The slot count is a project limit, not a PDK
+same implementation policy. The slot count is a chip limit, not a PDK
 inventory limit.
 
-The shared [project CLI](../../README.md#project-cli) registers `two_slot`
+The shared [chip CLI](../../README.md#chip-target-cli) registers `two_slot`
 and `three_slot` under `sram_budget`, with `standard` / `balanced` and one
 named endpoint, `synthesis`. The selected variant appears as `bank_variant`
 in the bundle's hardware declaration. In particular, a two-slot plan cannot
 authorize the emission or execution of a three-slot bundle. For durable
-elaboration evidence only, use `project prepare --chip sram_budget --variant
+elaboration evidence only, use `chip prepare --chip sram_budget --variant
 three_slot --json`. Both `flow plan` and `flow emit` are EDA-free.
 
 With a `hardcaml_asic` build that exposes `Resource_policy.create ~macro_limits`,

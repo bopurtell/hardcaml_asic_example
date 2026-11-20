@@ -1,0 +1,5 @@
+(executable
+ (name chip)
+ (modules chip)
+ (libraries core hardcaml_asic hardcaml_asic.execution program_memory yojson)
+ (preprocess (pps ppx_jane)))

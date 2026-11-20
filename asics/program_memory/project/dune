@@ -4,8 +4,5 @@
  (libraries core hardcaml hardcaml_asic)
  (preprocess (pps ppx_jane ppx_hardcaml)))
 
-(executable
- (name memory_cli)
- (modules memory_cli)
- (libraries core hardcaml_asic hardcaml_asic.execution program_memory yojson)
- (preprocess (pps ppx_jane)))
+; Compatibility path for existing qualification scripts.
+(rule (target memory_cli.exe) (action (copy %{exe:../cli/chip.exe} %{target})))

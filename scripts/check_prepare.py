@@ -150,9 +150,9 @@ def main():
         # Inventory gates: every project-owned constructor/CLI dependency is observed.
         for prep, required in (
                 (saved['exact-synthesis'][1], {'asics/program_memory/project/dune',
-                    'asics/program_memory/project/program_memory.ml', 'asics/program_memory/project/memory_cli.ml'}),
-                (fifo_prep, {'asics/fifo_demo/cli/dune', 'asics/fifo_demo/cli/project.ml',
-                    'asics/fifo_demo/project/project.ml', 'asics/fifo_demo/project/fifo_asic.ml',
+                    'asics/program_memory/project/program_memory.ml', 'asics/program_memory/cli/chip.ml'}),
+                (fifo_prep, {'asics/fifo_demo/cli/dune', 'asics/fifo_demo/cli/chip.ml',
+                    'asics/fifo_demo/project/fifo_chip.ml', 'asics/fifo_demo/project/fifo_asic.ml',
                     'asics/fifo_demo/rtl/tt_wrapper.ml', 'ip/controlled_fifo/rtl/controlled_fifo.ml'})):
             paths = {x['path'] for x in prep['source']['inputs']}
             check('source inventory gate: ' + prep['resources']['project'], required <= paths)

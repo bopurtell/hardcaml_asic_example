@@ -81,7 +81,7 @@ let policy requirement =
 ;;
 
 (* Keep existing OCaml callers' operation defaults. The CLI always supplies one. *)
-let project ?(extra_inputs = [ "asics/program_memory/project/memory_cli.ml" ]) ?(with_macro_intent = true) ?(depth = 256) ?operation requirement =
+let chip_target ?(extra_inputs = [ "asics/program_memory/cli/dune"; "asics/program_memory/cli/chip.ml" ]) ?(with_macro_intent = true) ?(depth = 256) ?operation requirement =
   let open Or_error.Let_syntax in
   let%bind policy = policy requirement in
   let operation =
@@ -120,7 +120,7 @@ let project ?(extra_inputs = [ "asics/program_memory/project/memory_cli.ml" ]) ?
     include Tt
     let create = Tt.create_with_depth depth
   end in
-  Project.create ~source_inputs:(source_inputs @ extra_inputs) ~name:"program_memory_specimen"
+  Chip_target.create ~source_inputs:(source_inputs @ extra_inputs) ~name:"program_memory_specimen"
     ~metadata:
       { title = "Program memory"; author = "hardcaml_asic_example"
       ; description = "Registered 256x16 1RW latency-one memory consumer"
@@ -150,6 +150,8 @@ let project ?(extra_inputs = [ "asics/program_memory/project/memory_cli.ml" ]) ?
            { Pinout.bank; bit; description })))
     ~policy ()
 ;;
+
+let project = chip_target
 
 let catalog () =
   let methodology = Flow.Methodology.create ~id:"stock256-r0" ~label:"Stock 256x16 R0"

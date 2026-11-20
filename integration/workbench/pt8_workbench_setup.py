@@ -91,7 +91,7 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX)
         run(['dune', 'build', '-j', '2', '--root', str(project), '--build-dir', BUILD,
              'tooling_acceptance/workloads/workload_emit.exe', 'tooling_acceptance/workloads/workload_public.exe',
-             'asics/fifo_demo/cli/project.exe'], cwd=project, env=env)
+             'asics/fifo_demo/cli/chip.exe'], cwd=project, env=env)
     captured = session / 'provider'
     for directory, names in (
         ('integration/workbench', ('pt8_workbench_provider.py', 'pt8_workbench_runner.py', 'workbench_paths.py', 'wire.py')),
@@ -107,7 +107,7 @@ def main():
     for name in ('workload_emit', 'workload_public'):
         shutil.copyfile(project / BUILD / 'default/tooling_acceptance/workloads' / (name + '.exe'), captured / (name + '.exe'))
         (captured / (name + '.exe')).chmod(0o555)
-    shutil.copyfile(project / BUILD / 'default/asics/fifo_demo/cli/project.exe', captured / 'project.exe')
+    shutil.copyfile(project / BUILD / 'default/asics/fifo_demo/cli/chip.exe', captured / 'project.exe')
     (captured / 'project.exe').chmod(0o555)
     # Resolve the exact stock model paths through the existing PDK tree.
     pdk = ROOT / '_flow_tools/pdk/ihp-sg13cmos5l'
@@ -124,7 +124,7 @@ def main():
     write(session / 'provider-command.json', provider)
     from wire import sexp
     (project / 'hardcaml-workbench-preparation.sexp').write_text(sexp([
-        ('schema_version', 1), ('build_target', 'asics/fifo_demo/cli/project.exe'),
+        ('schema_version', 1), ('build_target', 'asics/fifo_demo/cli/chip.exe'),
         ('results_root', str(session / 'preparation-results')),
         ('timeout_seconds', 600)]) + '\n')
     (project / 'hardcaml-workbench-simulation.sexp').write_text(sexp([

@@ -14,6 +14,6 @@
  (alias segmented-preparation)
  (deps check_segmented_preparation.py segmented_consumer.ml dune
        ../../../dune-project ../../../asic-dependency.json
-       ../README.md (source_tree ../project))
+       ../README.md (source_tree ../project) (source_tree ../cli))
  (action (run python3 -B %{dep:check_segmented_preparation.py}
    %{exe:segmented_consumer.exe} ../../..)))

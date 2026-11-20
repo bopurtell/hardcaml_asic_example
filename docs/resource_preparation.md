@@ -1,7 +1,7 @@
 # Project-owned resource preparation
 
-> **Source-layout note:** current CLIs are `asics/fifo_demo/cli/project.exe` and
-> `asics/program_memory/project/memory_cli.exe`. Use the
+> **Source-layout note:** current chip CLIs are `asics/fifo_demo/cli/chip.exe` and
+> `asics/program_memory/cli/chip.exe`. Use the
 > [layout map](repository_layout.md) for other source paths below. Resource
 > preparation is distinct from Workbench source-build/bundle generation.
 

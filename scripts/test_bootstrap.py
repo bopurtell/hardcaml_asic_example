@@ -15,7 +15,7 @@ BOOTSTRAP = Path(__file__).resolve().parent.parent / "bootstrap.sh"
 sys.path.insert(0, str(BOOTSTRAP.parent / "integration/workbench"))
 from wire import parse
 
-TARGET = "asics/fifo_demo/cli/project.exe"
+TARGET = "asics/fifo_demo/cli/chip.exe"
 ASIC = "hardcaml-workbench-asic.sexp"
 PREP = "hardcaml-workbench-preparation.sexp"
 RECORDER = r'''

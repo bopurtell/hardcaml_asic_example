@@ -12,7 +12,7 @@ run these from this example, in the switch where you installed the ASIC librarie
 silver --standalone
 ```
 
-Bootstrap provisions the physical tools, builds the FIFO project CLI and
+Bootstrap provisions the physical tools, builds the FIFO chip CLI and
 configures the checkout's Standard flow and two simulation suites for Silver.
 After that, just run `silver --standalone`. The provider on `PATH` supplies execution; the example's own CLI
 supplies its flow catalog, including `standard / balanced / synthesis`.
@@ -43,9 +43,9 @@ To reopen this example's **prepared** tools and saved session instead, use
 | Location | Owner and purpose |
 | --- | --- |
 | [`ip/controlled_fifo/`](ip/controlled_fifo/) | FIFO RTL, independent model, stimulus, Cyclesim verification, and simulation provider |
-| [`asics/fifo_demo/`](asics/fifo_demo/) | TT wrapper, ASIC project/flows, CLI, whole-wrapper verification and bundle replay |
-| [`asics/program_memory/`](asics/program_memory/README.md) | Program-memory SRAM project, behavioral verification, and physical qualification harness |
-| [`asics/sram_budget/`](asics/sram_budget/README.md) | Three identical RAM requests competing for a project-level SRAM instance budget |
+| [`asics/fifo_demo/`](asics/fifo_demo/) | TT wrapper, chip target and flows, CLI, whole-wrapper verification and bundle replay |
+| [`asics/program_memory/`](asics/program_memory/README.md) | Program-memory SRAM chip target, behavioral verification, and physical qualification harness |
+| [`asics/sram_budget/`](asics/sram_budget/README.md) | Three identical RAM requests competing for a chip-level SRAM instance budget |
 | [`tooling_acceptance/timing/`](tooling_acceptance/timing/) | Five-register timing fixture and basic/named-flow/physical API qualification |
 | [`tooling_acceptance/variants/`](tooling_acceptance/variants/README.md) | Parameterized memory constructor and conformance qualification |
 | [`tooling_acceptance/workloads/`](tooling_acceptance/workloads/) | Workload execution/result qualification |
@@ -81,7 +81,7 @@ selection; those continue to use their existing receipts and executable paths.
 ```sh
 # With the example's ASIC dependency and Silver SDK already prepared:
 dune build -j6 .
-dune build -j6 asics/fifo_demo/cli/project.exe
+dune build -j6 asics/fifo_demo/cli/chip.exe
 dune runtest -j6 ip/controlled_fifo/verif/cyclesim
 dune build -j6 @@asics/fifo_demo/verif/runtest
 dune runtest -j6 asics/program_memory/verif
@@ -97,7 +97,7 @@ Keep the total job allocation of concurrent commands at or below **20**.
 from this checkout to build against those edits. It incrementally builds the
 provider and the example in sequence. Neither step reinstalls the compiler,
 Hardcaml or OxCaml. The example uses a separate build directory in this mode so
-experimenting doesn't replace the project executable used by prepared Silver.
+experimenting doesn't replace the chip executable used by prepared Silver.
 Use a development **refresh** only when you want a validated, installed snapshot
 of the provider; it is not necessary on every source edit.
 
@@ -113,7 +113,9 @@ The strict alias requires `iverilog` and `vvp`. Ordinary bundle verification rep
 an explicit RTL skip if they are unavailable. Shared CLI/dependency checks remain
 under `dune runtest -j6 scripts`.
 
-## Project CLI
+<a id="project-cli"></a>
+
+## Chip target CLI
 
 From the checkout root, a provider with `hardcaml-asic-targets` can discover
 and invoke the project's standalone chip executables without Silver:
@@ -127,18 +129,30 @@ hardcaml-asic-targets exec --target program_memory -- flow list --json
 
 [`hardcaml-asic-targets.json`](hardcaml-asic-targets.json) registers these two
 entry points; FIFO is the default. The program-memory route invokes its own
-`memory_cli.exe`. Removing its entry hides it from provider discovery, but
-`dune exec ./asics/program_memory/project/memory_cli.exe -- flow list --json`
+`asics/program_memory/cli/chip.exe`. Removing its entry hides it from provider discovery, but
+`dune exec ./asics/program_memory/cli/chip.exe -- flow list --json`
 still works. Each chip owns its hardware declaration and named flows.
 
-The recorded dependency predates `hardcaml-asic-targets` and the macro-limit
-API used by the multi-chip FIFO CLI. Bootstrap does not invoke the catalog
-tool, but building that FIFO executable still requires a provider with the
-macro-limit API. With a catalog-capable provider and its OCaml libraries active, run
-`python3 -B scripts/test_target_catalog.py` to check the public CLI, including
-entry removal, against a temporary copy of the designs.
+**Using the sibling provider:** the recorded revision predates `Chip_target.create`
+and the target catalog. From this project root, build the two registered chip targets
+and use the matching provider for discovery without changing the dependency pin:
 
-`chip list --json` lists the chips and variants built into the project executable.
+```sh
+./scripts/build_with_asic_checkout.sh
+provider="$PWD/../hardcaml_asic/_build/install/default"
+"$provider/bin/hardcaml-asic-targets" list
+chip=_build_asic_dev/default/asics/fifo_demo/cli/chip.exe
+"$chip" list --json
+_build_asic_dev/default/asics/program_memory/cli/chip.exe flow list --json
+OCAMLPATH="$provider/lib" opam exec --switch=5.2.0+ox -- \
+  python3 -B scripts/test_target_catalog.py --provider "$provider/bin/hardcaml-asic-targets"
+```
+
+`chip list --json` lists the FIFO CLI's built-in variants and adds targets from
+`hardcaml-asic-targets.json` with the scaffold's `default` variant. Listing
+doesn't build them. To use a newly registered target, build its catalog
+executable in the same Dune context as the configured FIFO CLI. The FIFO CLI
+delegates commands for that chip to its executable.
 The same `--chip ID` and `--variant ID` selectors apply to `flow list`, `describe`,
 `plan`, `emit`, and `run`. Omitting both selects the original FIFO. Omitting only
 the variant selects that chip's default.
@@ -152,12 +166,12 @@ the variant selects that chip's default.
 To inspect the three-slot design without starting any EDA tools:
 
 ```sh
-dune build asics/fifo_demo/cli/project.exe
-project=_build/default/asics/fifo_demo/cli/project.exe
-"$project" chip list --json
-"$project" flow plan --chip sram_budget --variant three_slot --endpoint synthesis --json > /tmp/budget-plan.json
+dune build asics/fifo_demo/cli/chip.exe
+chip=_build/default/asics/fifo_demo/cli/chip.exe
+"$chip" list --json
+"$chip" flow plan --chip sram_budget --variant three_slot --endpoint synthesis --json > /tmp/budget-plan.json
 jq '{project_name, variant: (.bundle_manifest | fromjson | .hardware_variant.assignments)}' /tmp/budget-plan.json
-"$project" flow emit --chip sram_budget --variant three_slot --endpoint synthesis \
+"$chip" flow emit --chip sram_budget --variant three_slot --endpoint synthesis \
   --expected-plan-identity "$(jq -r .plan_identity /tmp/budget-plan.json)" --json
 ```
 
@@ -169,9 +183,9 @@ the execution provider. See [the SRAM budget example](asics/sram_budget/README.m
 for behavioral replay and setup against the sibling provider checkout.
 
 ```sh
-dune exec -j6 asics/fifo_demo/cli/project.exe -- describe --json
-dune exec -j6 asics/fifo_demo/cli/project.exe -- flow list --json
-dune exec -j6 asics/fifo_demo/cli/project.exe -- flow plan \
+dune exec -j6 asics/fifo_demo/cli/chip.exe -- describe --json
+dune exec -j6 asics/fifo_demo/cli/chip.exe -- flow list --json
+dune exec -j6 asics/fifo_demo/cli/chip.exe -- flow plan \
   --flow standard --profile balanced --endpoint synthesis --json
 ```
 
@@ -183,7 +197,7 @@ and `asic-dependency.json`, not the nested ASIC directory.
 
 The FIFO is 16×8, register-backed, with synchronous active-high clear and a
 registered pop response. See its [public interface](ip/controlled_fifo/rtl/controlled_fifo.mli)
-for behavior and its [ASIC declaration](asics/fifo_demo/project/project.ml) for
+for behavior and its [ASIC declaration](asics/fifo_demo/project/fifo_chip.ml) for
 target, timing, source inventory, and pin assignments.
 
 For SRAM selection/operations and retained physical evidence, start with
@@ -202,7 +216,7 @@ The supported Workbench loader currently discovers the three root companion file
   toolchain, result locations, and execution budget.
 * `hardcaml-workbench-simulation.sexp`: selected simulation provider and budgets.
 
-The preparation build target now names `asics/fifo_demo/cli/project.exe`. The
+The preparation build target now names `asics/fifo_demo/cli/chip.exe`. The
 ASIC/simulation companions retain their existing pinned executables; moving source
 does not rebuild or upgrade those selections.
 
@@ -221,6 +235,9 @@ Local storage roles:
 * `_build*/`: disposable Dune build trees, ignored by Git.
 
 ## Migration and historical documentation
+
+The [chip target migration notes](docs/repository_layout.md#chip-target-migration-wb-082)
+map declaration and executable names, describe clock ownership, and list compatibility aliases.
 
 The [migration plan and execution record](docs/migration_plans/ownership_layout.md)
 contains scope, policies, verification, and follow-up work. The

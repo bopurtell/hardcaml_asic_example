@@ -38,6 +38,7 @@ def check(provider, root):
         'program_memory': ('program_memory_specimen', 'stock256-r0', 'qualification'),
     }
     for chip, (name, flow, profile) in expected.items():
+        assert entries[chip]['executable'] == f'asics/{chip}/cli/chip.exe'
         assert run(root, provider, 'select', '--target', chip) == entries[chip]
         invoke = [provider, 'exec', '--target', chip, '--']
         assert run(root, *invoke, 'describe', '--json')['project_name'] == name
@@ -53,9 +54,9 @@ def check(provider, root):
     run(root, provider, 'select', '--target', 'program_memory', error=['unknown', 'program_memory', 'fifo_demo'])
     run(root, provider, 'exec', '--target', 'program_memory', '--', 'describe', '--json',
         error=['unknown', 'program_memory'])
-    subprocess.run(['dune', 'clean'], cwd=root, check=True)
+    subprocess.run(['dune', 'clean', '--root', '.'], cwd=root, check=True)
     direct = './' + entries['program_memory']['executable']
-    assert run(root, 'dune', 'exec', direct, '--', 'describe', '--json')['project_name'] == expected['program_memory'][0]
+    assert run(root, 'dune', 'exec', '--root', '.', direct, '--', 'describe', '--json')['project_name'] == expected['program_memory'][0]
 
 
 if __name__ == '__main__':

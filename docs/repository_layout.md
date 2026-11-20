@@ -9,7 +9,7 @@ describes session boundaries and configuration follow-up.
 
 An IP owns its RTL and verification. A parent ASIC can import the IP's model and
 stimulus without moving them into global infrastructure. Each ASIC owns its top,
-project/flow declarations and system-level environment. Reusable drivers, monitors,
+chip-target/flow declarations and system-level environment. Reusable drivers, monitors,
 or checkers belong in a root `verif/` only when they actually serve multiple owners;
 there is currently no need for an empty shared verification framework.
 
@@ -23,12 +23,13 @@ ip/controlled_fifo/
 asics/
   fifo_demo/
     rtl/                     TT top/wrapper
-    project/                 Declaration, flow catalog/profiles, Fifo_asic facade
-    cli/                     Project CLI and stage recipe client
+    project/                 fifo_chip.ml declaration, flow catalog/profiles, Fifo_asic facade
+    cli/                     chip.exe and stage recipe client
     verif/                   Wrapper and declaration/catalog checks
       bundle/                Emission verification and RTL replay
   program_memory/
-    project/                 Combined core/TT adapter/declaration and CLI
+    project/                 Combined core/TT adapter/chip target
+    cli/                     Standalone chip.exe for program memory
     verif/                   Memory checks, replay benches, snapshot replay
     physical/                Physical harness, packaging, evidence documentation
 tooling_acceptance/
@@ -45,8 +46,37 @@ scripts/                     Repository setup and verification entry points
 acceptance/                  Retained evidence, not the active hardware source tree
 ```
 
-`program_memory.ml` intentionally still combines its core, adapter, and project:
-this migration changes ownership paths, not hardware architecture or public APIs.
+### Chip target migration (WB-082)
+
+The Dune root is the **project**. Each registered **chip target** has an
+`asics/<id>/cli/chip.exe` entry in `hardcaml-asic-targets.json`. The two
+`project/` library directories retain their Dune library names. Use
+`Fifo_asic.chip_target`, `Program_memory.chip_target`, or `Sram_budget.chip_target`
+to construct a `Hardcaml_asic.Chip_target.t`; the old `.project` functions remain
+aliases. `fifo_chip.ml` holds the former FIFO `project.ml` declaration.
+
+Existing `asics/fifo_demo/cli/project.exe` and
+`asics/program_memory/project/memory_cli.exe` build the same binaries as the new
+paths. Use `chip list --json` on the FIFO CLI instead of `project chip list --json`.
+`project_name` in protocol output and `project_executable` in Silver config keep
+their wire spellings. Source inventories change with source moves: derive a fresh
+plan identity before emitting or running; historical bundles keep their old paths.
+
+The FIFO IP library owns its `clock` input and logic. Its TT wrapper connects
+that input to `clk`, and the chip declaration sets the period (48 MHz). Program
+memory also targets 48 MHz; the SRAM-budget target declares 20 ns. Clock timing
+belongs to each chip, not the enclosing project or its catalog. See the
+[build and enumeration commands](../README.md#chip-target-cli).
+
+Verified against the local `../hardcaml_asic` build: the provider listed and
+invoked both registered executables; after removing the program-memory entry in
+a disposable project, its standalone CLI still built and described the chip.
+The two legacy executable paths produced byte-identical binaries to their new
+counterparts. `scripts/test_chip_routing.py` checked FIFO synthesis planning,
+program-memory timing emission, both SRAM-budget synthesis variants, their
+resolved clocks and target-specific source inventories. The FIFO core/wrapper,
+program-memory behavioral tests and both SRAM-budget RTL replays passed. These
+checks cover elaboration and emitted bundles, not physical timing closure.
 
 ## Verification versus tool qualification
 

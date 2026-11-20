@@ -82,7 +82,7 @@ class Acceptance(unittest.TestCase):
         cls.counter = 0
         cls.protected = {}
         for name in ('hardcaml-workbench-simulation.sexp', 'hardcaml-workbench-asic.sexp',
-                     'hardcaml-workbench-preparation.sexp', 'asics/fifo_demo/project/project.ml',
+                     'hardcaml-workbench-preparation.sexp', 'asics/fifo_demo/project/fifo_chip.ml',
                      'asics/fifo_demo/verif/bundle/dune'):
             path = ROOT / name
             cls.protected[str(path)] = router.sha(path)
@@ -473,17 +473,17 @@ class Acceptance(unittest.TestCase):
             return result.stdout
         options = ['--flow', 'standard', '--profile', 'balanced', '--endpoint', 'synthesis',
                    '--source-root', str(project), '--json']
-        driver = manifest['generation'] + '/provider/project.exe'
+        driver = manifest['generation'] + '/provider/chip.exe'
         planned = json.loads(command('captured-plan', [driver, 'flow', 'plan', *options]))
         # Exercise exactly the private _build/default location stock Preparation executes.
-        command('source-build', ['dune', 'build', '--root', str(project), '-j2', '--', 'asics/fifo_demo/cli/project.exe'])
+        command('source-build', ['dune', 'build', '--root', str(project), '-j2', '--', 'asics/fifo_demo/cli/chip.exe'])
         # Preserve the old test/asic_test/timing scope. The authored bundle
         # harness is now nested under verif, but has its own disposable Git setup
         # and was never part of this scoped-Git ordinary-test invocation.
         command('ordinary-tests', ['dune', 'build', '--root', str(project), '-j2',
             '@@ip/controlled_fifo/verif/cyclesim/runtest', '@@asics/fifo_demo/verif/runtest',
             '@@tooling_acceptance/timing/fixture/verif/runtest'])
-        driver = str(project / '_build/default/asics/fifo_demo/cli/project.exe')
+        driver = str(project / '_build/default/asics/fifo_demo/cli/chip.exe')
         fresh = json.loads(command('source-plan', [driver, 'flow', 'plan', *options]))
         self.assertEqual(fresh['plan_identity'], planned['plan_identity'])
         emitted = json.loads(command('source-emit', [driver, 'flow', 'emit', *options,
@@ -776,7 +776,7 @@ class Acceptance(unittest.TestCase):
         directory.mkdir()
         env = router.environment(current)
         # A fresh source-only bundle; no physical stage/EDA command exists here.
-        emitted = subprocess.run([current['generation'] + '/provider/project.exe', 'flow', 'emit',
+        emitted = subprocess.run([current['generation'] + '/provider/chip.exe', 'flow', 'emit',
             '--flow', 'standard', '--profile', 'balanced', '--endpoint', 'synthesis',
             '--source-root', str(project), '--results-root', str(directory / 'bundles'), '--json'],
             cwd=project, env=env, capture_output=True, timeout=90, check=True)

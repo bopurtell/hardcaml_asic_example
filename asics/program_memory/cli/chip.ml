@@ -2,8 +2,8 @@ open! Core
 open Hardcaml_asic
 
 let usage =
-   "Usage: memory_cli describe --json | flow list --json\n\
-    \       memory_cli (check|emit|prepare|preview|resources) --selection (flops|exact|fallback) --operation (synthesis|hardening)\n\
+   "Program memory chip target\nUsage: chip describe --json | flow list --json\n\
+    \       chip (check|emit|prepare|preview|resources) --selection (flops|exact|fallback) --operation (synthesis|hardening)\n\
     \       prepare requires --source-root ROOT --results-root STORE; optional --json\n\
     \       resources is nonpublishing; optional --simulation; --depth 128|256 (default 256)\n\
     \       preview requires --source-root ROOT; nonpublishing implementation preparation\n\
@@ -16,10 +16,10 @@ let main () =
   match args with
   | [ "--help" ] -> Out_channel.output_string stdout usage
   | [ "describe"; "--json" ] ->
-    let project = Program_memory.project ~operation:Hardening Exact |> Or_error.ok_exn in
+    let project = Program_memory.chip_target ~operation:Hardening Exact |> Or_error.ok_exn in
     print_endline (Yojson.Safe.to_string (`Assoc
-      [ "project_name", `String (Project.name project)
-      ; "declaration_sexp", `String (Sexp.to_string_hum (Project.describe project)) ]))
+      [ "project_name", `String (Chip_target.name project)
+      ; "declaration_sexp", `String (Sexp.to_string_hum (Chip_target.describe project)) ]))
   | [ "flow"; "list"; "--json" ] ->
     print_endline (Yojson.Safe.to_string (Flow_spec.list_to_yojson (Program_memory.catalog ())))
   | command :: rest when List.mem [ "check"; "emit"; "prepare"; "preview"; "resources" ] command ~equal:String.equal ->
@@ -63,21 +63,21 @@ let main () =
        let outcome = E.Preparation_service.run_cli ~store ~request
          ~json:(Option.is_some (get "--json"))
          ~prepare:(fun ~on_phase ->
-           let project = Program_memory.project ~depth ~operation requirement |> Or_error.ok_exn in
-           Project.prepare_resources ~on_phase project ~source_root) () in
+           let project = Program_memory.chip_target ~depth ~operation requirement |> Or_error.ok_exn in
+           Chip_target.prepare_resources ~on_phase project ~source_root) () in
        Stdlib.exit (Option.value outcome.record.exit_code ~default:1));
      let result =
       let open Or_error.Let_syntax in
-       let%bind project = Program_memory.project ~depth ~operation requirement in
+       let%bind project = Program_memory.chip_target ~depth ~operation requirement in
        match command, get "--source-root", get "--output-dir" with
        | "preview", Some source_root, None ->
-         (match Project.prepare_resources project ~source_root with
+         (match Chip_target.prepare_resources project ~source_root with
           | Ok prepared -> Ok (Resource_preparation.to_json prepared)
           | Error failure ->
             print_endline (Yojson.Safe.pretty_to_string (Resource_preparation.Failure.to_json failure));
             Stdlib.exit 1)
        | "check", None, None ->
-        let%map resolved = Project.elaborate_for_flow project in
+        let%map resolved = Chip_target.elaborate_for_flow project in
         `Assoc
           [ "resources_sexp",
             `String (Sexp.to_string_hum
@@ -85,11 +85,11 @@ let main () =
                   (Elaborated_project.resources resolved.elaborated_project))) ]
        | "resources", None, None ->
          let%map view = if Option.is_some (get "--simulation") then
-           Project.elaborate project ~mode:Simulation |> Or_error.map ~f:Resource_snapshot.of_elaborated
-         else Project.elaborate_for_flow project |> Or_error.map ~f:Resource_snapshot.of_resolved in
+           Chip_target.elaborate project ~mode:Simulation |> Or_error.map ~f:Resource_snapshot.of_elaborated
+         else Chip_target.elaborate_for_flow project |> Or_error.map ~f:Resource_snapshot.of_resolved in
          Resource_snapshot.to_json view
       | "emit", Some source_root, Some output_dir ->
-        let%map bundle = Project.emit_bundle project ~source_root ~output_dir in
+        let%map bundle = Chip_target.emit_bundle project ~source_root ~output_dir in
         `Assoc [ "identity", `String (Bundle.identity bundle); "output_dir", `String output_dir ]
       | _ -> bad ()
     in
@@ -103,6 +103,6 @@ let main () =
 
 let () =
   try main () with exn ->
-    eprintf "memory_cli failed: %s\n%!" (Exn.to_string exn);
+    eprintf "chip failed: %s\n%!" (Exn.to_string exn);
     Stdlib.exit 2
 ;;

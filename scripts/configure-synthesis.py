@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / 'integration/workbench'))
 import config_location
 from wire import sexp
 
-TARGET = 'asics/fifo_demo/cli/project.exe'
+TARGET = 'asics/fifo_demo/cli/chip.exe'
 
 
 def publish(root, filename, fields):

@@ -2,7 +2,11 @@
   "schema_version": 1,
   "default_target": "fifo_demo",
   "targets": [
-    { "id": "fifo_demo", "executable": "asics/fifo_demo/cli/project.exe" },
-    { "id": "program_memory", "executable": "asics/program_memory/project/memory_cli.exe" }
+    { "id": "fifo_demo", "executable": "asics/fifo_demo/cli/chip.exe" },
+    {
+      "id": "program_memory",
+      "executable": "asics/program_memory/cli/chip.exe"
+    },
+    { "id": "funky_chip1", "executable": "asic_funky_chip1/project.exe" }
   ]
 }

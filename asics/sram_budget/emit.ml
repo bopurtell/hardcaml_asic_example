@@ -2,8 +2,8 @@ open! Core
 open Hardcaml_asic
 
 let emit ~budget ~source_root ~output_dir =
-  let project = Sram_budget.project ~extra_inputs:["asics/sram_budget/emit.ml"] ~budget () |> Or_error.ok_exn in
-  Project.emit_bundle project ~source_root ~output_dir |> Or_error.ok_exn |> Bundle.identity
+  let project = Sram_budget.chip_target ~extra_inputs:["asics/sram_budget/emit.ml"] ~budget () |> Or_error.ok_exn in
+  Chip_target.emit_bundle project ~source_root ~output_dir |> Or_error.ok_exn |> Bundle.identity
 ;;
 
 let () =

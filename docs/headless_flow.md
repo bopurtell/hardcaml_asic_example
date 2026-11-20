@@ -1,7 +1,7 @@
 # Standalone named-flow client (bounded demonstration)
 
 > **Source-layout note:** the active project CLI is now
-> `asics/fifo_demo/cli/project.exe`; see the [layout map](repository_layout.md).
+> `asics/fifo_demo/cli/chip.exe`; see the [layout map](repository_layout.md).
 > Retained execution paths and identities below remain historical.
 
 `scripts/headless_flow.py` is a Python-standard-library-only public CLI client.

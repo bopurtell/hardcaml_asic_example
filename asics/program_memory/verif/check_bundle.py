@@ -64,7 +64,7 @@ def check_selection(args, selection, operation):
         for item in m["files"]:
             require(digest(files[item["path"]]) == item["sha256"], f"file digest {item['path']}")
         inputs = sorted(["asic-dependency.json", "dune-project", "asics/program_memory/README.md", "asics/program_memory/project/dune",
-                         "asics/program_memory/project/memory_cli.ml", "asics/program_memory/project/program_memory.ml"])
+                         "asics/program_memory/cli/dune", "asics/program_memory/cli/chip.ml", "asics/program_memory/project/program_memory.ml"])
         require([x["path"] for x in m["source_inputs"]] == inputs, "complete generation input inventory")
         for item in m["source_inputs"]:
             require(files[item["copy"]] == (source / item["path"]).read_bytes(), "copied source bytes")

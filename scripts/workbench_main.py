@@ -33,7 +33,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from workbench_git import clean_environment
 
 KINDS = ('asic', 'preparation', 'simulation')
-TARGETS = ('asics/fifo_demo/cli/project.exe',
+TARGETS = ('asics/fifo_demo/cli/chip.exe',
            'ip/controlled_fifo/verif/simulation/test_provider.exe',
            'ip/controlled_fifo/verif/simulation/fifo_sim.exe',
            'tooling_acceptance/workloads/workload_emit.exe',

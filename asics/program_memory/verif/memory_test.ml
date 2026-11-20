@@ -48,7 +48,7 @@ module Core_design = struct
 end
 
 let core_project requirement =
-  Project.create ~name:"program_memory_core_test"
+  Chip_target.create ~name:"program_memory_core_test"
     ~metadata:{ title = "Memory test"; author = "test"; description = "Public core API test" }
     ~design:(module Core_design)
     ~target:{ harness = Tiny_tapeout { tiles = T6x4 }; technology = Technology.ihp_sg13cmos5l }
@@ -58,7 +58,7 @@ let core_project requirement =
 ;;
 
 let run_core requirement mode =
-  let elaborated = Project.elaborate (core_project requirement) ~mode |> Or_error.ok_exn in
+  let elaborated = Chip_target.elaborate (core_project requirement) ~mode |> Or_error.ok_exn in
   check_inventory requirement mode elaborated;
   let sim = Cyclesim.create (Elaborated_project.circuit elaborated) in
   let output edge = Cyclesim.out_port ~clock_edge:edge sim "read_data" in
@@ -107,29 +107,29 @@ let run_core requirement mode =
 let () =
   if Array.equal String.equal (Sys.get_argv ()) [| (Sys.get_argv ()).(0); "--export-exact-core" |]
   then (
-    let elaborated = Project.elaborate (core_project Exact) ~mode:Implementation |> Or_error.ok_exn in
+    let elaborated = Chip_target.elaborate (core_project Exact) ~mode:Implementation |> Or_error.ok_exn in
     Rtl.print Verilog (Elaborated_project.circuit elaborated);
     Stdlib.exit 0);
   List.iter [ Elaboration.Mode.Simulation; Implementation ] ~f:(run_core Flops);
   run_core Exact Simulation;
   List.iter [ Elaboration.Mode.Simulation; Implementation ] ~f:(fun mode ->
-    let project = Program_memory.project Flops |> Or_error.ok_exn in
-    Project.elaborate project ~mode |> Or_error.ok_exn |> check_inventory Flops mode;
-    let exact = Program_memory.project Exact |> Or_error.ok_exn in
-    Project.elaborate exact ~mode |> Or_error.ok_exn |> check_inventory Exact mode);
+    let project = Program_memory.chip_target Flops |> Or_error.ok_exn in
+    Chip_target.elaborate project ~mode |> Or_error.ok_exn |> check_inventory Flops mode;
+    let exact = Program_memory.chip_target Exact |> Or_error.ok_exn in
+    Chip_target.elaborate exact ~mode |> Or_error.ok_exn |> check_inventory Exact mode);
   List.iter [ true; false ] ~f:(fun with_macro_intent ->
-    Program_memory.project ~with_macro_intent Exact |> Or_error.ok_exn
-     |> Project.elaborate_for_flow |> Or_error.ok_exn |> ignore);
+    Program_memory.chip_target ~with_macro_intent Exact |> Or_error.ok_exn
+     |> Chip_target.elaborate_for_flow |> Or_error.ok_exn |> ignore);
   (* Operation selection must not change the hardware inventory or cycle contract. *)
   List.iter [ Flow.Operation.Synthesis; Hardening ] ~f:(fun operation ->
     List.iter [ Resource_policy.Requirement.Flops; Exact ] ~f:(fun requirement ->
-      let project = Program_memory.project ~operation requirement |> Or_error.ok_exn in
-      Project.elaborate_for_flow project |> Or_error.ok_exn |> ignore;
+      let project = Program_memory.chip_target ~operation requirement |> Or_error.ok_exn in
+      Chip_target.elaborate_for_flow project |> Or_error.ok_exn |> ignore;
       List.iter [ Elaboration.Mode.Simulation; Implementation ] ~f:(fun mode ->
-        Project.elaborate project ~mode |> Or_error.ok_exn
+        Chip_target.elaborate project ~mode |> Or_error.ok_exn
          |> check_inventory requirement mode)));
-  (match Program_memory.project ~operation:Hardening ~with_macro_intent:false Exact
-         |> Or_error.bind ~f:Project.elaborate_for_flow with
+  (match Program_memory.chip_target ~operation:Hardening ~with_macro_intent:false Exact
+         |> Or_error.bind ~f:Chip_target.elaborate_for_flow with
    | Ok _ -> failwith "Exact Hardening accepted missing physical intent"
    | Error error ->
      require "Hardening requires complete physical intent"
@@ -145,19 +145,19 @@ let () =
           ~clock:i.clock ~enable:i.enable ~write_enable:i.write_enable
           ~address:(Signal.select i.address ~high:6 ~low:0) ~write_data:i.write_data }
   end in
-  let unsupported = Project.create ~name:"unsupported_shape"
+  let unsupported = Chip_target.create ~name:"unsupported_shape"
     ~metadata:{ title = "Unsupported"; author = "test"; description = "No shape rounding" }
     ~design:(module Unsupported)
     ~target:{ harness = Tiny_tapeout { tiles = T6x4 }; technology = Technology.ihp_sg13cmos5l }
     ~flow:(Flow.librelane Synthesis)
     ~policy:(Program_memory.policy Exact |> Or_error.ok_exn) () |> Or_error.ok_exn in
   List.iter [ Elaboration.Mode.Simulation; Implementation ] ~f:(fun mode ->
-    match Project.elaborate unsupported ~mode with
+    match Chip_target.elaborate unsupported ~mode with
     | Ok _ -> failwith "unsupported Exact shape succeeded"
     | Error error -> List.iter [ "program"; "no exact implementation"; "fallback is not permitted" ]
         ~f:(fun substring -> require substring
           (String.is_substring (String.lowercase (Error.to_string_hum error)) ~substring)));
-  Program_memory.project Flops |> Or_error.ok_exn |> Project.elaborate_for_flow |> Or_error.ok_exn |> ignore;
+  Program_memory.chip_target Flops |> Or_error.ok_exn |> Chip_target.elaborate_for_flow |> Or_error.ok_exn |> ignore;
   let policy = Program_memory.policy Flops |> Or_error.ok_exn in
   require "no implicit fallback/default for another instance"
     (Or_error.is_error (Resource_policy.lookup policy (Resource.Id.of_string_exn "other")));

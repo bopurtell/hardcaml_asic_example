@@ -131,7 +131,7 @@ else:
             self.invoke(command, '--help', cwd=self.outside)
         self.invoke('describe', '--json', cwd=self.outside)
         self.assertFalse((self.root / '_flow_results').exists())
-        (self.root / 'asics/fifo_demo/cli/project.ml').unlink()
+        (self.root / 'asics/fifo_demo/cli/chip.ml').unlink()
         self.invoke('emit', status=2)
         self.assertFalse((self.root / '_flow_results').exists())
 
@@ -236,7 +236,7 @@ else:
 
     def test_endpoint_explicit_bundle_spaces_overrides_and_exit(self):
         env = dict(self.env, CONTRACT='4', PROVIDER_EXIT='37', TOOLCHAIN='ignored tools')
-        (self.root / 'asics/fifo_demo/cli/project.ml').unlink()  # would prevent emission
+        (self.root / 'asics/fifo_demo/cli/chip.ml').unlink()  # would prevent emission
         self.invoke('run', '--endpoint', 'floorplan', '--project-root', str(self.root),
                     '--bundle', 'existing bundle', '--results-root', 'result store',
                     '--toolchain', 'explicit tools', '--support-tools', 'support tools',

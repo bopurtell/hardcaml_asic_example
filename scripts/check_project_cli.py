@@ -49,11 +49,11 @@ def main():
                      ["emit", "--source-root", str(root), "--output-dir", str(output), "--bogus"],
                      ["--source-root", str(root), "--output-dir", str(output)]):
             result = check(args, 2)
-            assert "project" in result.stderr and "Bundle emission failed" not in result.stderr
+            assert "Usage: chip" in result.stderr and "Bundle emission failed" not in result.stderr
         for args in (["--help"], ["prepare", "--help"], ["preview", "--help"], ["resources", "--help"],
                      ["emit", "--help"], ["preflight", "--help"], ["run", "--help"],
                      *(["flow", command, "--help"] for command in ("list", "describe", "plan", "emit", "run"))):
-            assert "project" in check(args, 0).stdout
+            assert "Usage: chip" in check(args, 0).stdout
     print("PASS CLI: declaration-only description without Git/PATH; help and invalid commands; no output created")
 
 

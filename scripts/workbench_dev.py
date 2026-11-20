@@ -24,7 +24,7 @@ from workbench_git import clean_environment
 CONFIGS = ('simulation', 'asic', 'preparation')
 TARGETS = ('ip/controlled_fifo/verif/simulation/test_provider.exe', 'ip/controlled_fifo/verif/simulation/fifo_sim.exe',
            'tooling_acceptance/workloads/workload_emit.exe', 'tooling_acceptance/workloads/workload_public.exe',
-           'asics/fifo_demo/cli/project.exe')
+           'asics/fifo_demo/cli/chip.exe')
 IMPORT_GROUPS = {name: (name,) for name in ('ip/controlled_fifo/verif/cyclesim', 'asics/fifo_demo/verif',
     'tooling_acceptance/timing', 'bootstrap.sh')}
 OWNED_SUPPORT = ('integration/workbench/workbench_provider.py', 'scripts/workbench_dev.py',
@@ -652,10 +652,10 @@ def capture(args, store, prior, receipt, migration=None):
         (generation / 'config' / ('hardcaml-workbench-' + kind + '.sexp')).write_text(sexp(values) + '\n')
     config('simulation', [('schema_version', 1), ('provider_executable', provider[0]), ('provider_args', provider[1:]),
                           ('discovery_timeout_seconds', 30), ('run_timeout_seconds', 600)])
-    config('preparation', [('schema_version', 1), ('build_target', 'asics/fifo_demo/cli/project.exe'),
+    config('preparation', [('schema_version', 1), ('build_target', 'asics/fifo_demo/cli/chip.exe'),
                            ('results_root', str(store / 'preparation-results')), ('timeout_seconds', 600)])
     tools = Path(inputs['toolchain'])
-    config('asic', [('schema_version', 1), ('project_executable', str(generation / 'provider/project.exe')),
+    config('asic', [('schema_version', 1), ('project_executable', str(generation / 'provider/chip.exe')),
                     ('provider_executable', str(asic / 'bin/hardcaml-asic-flow')), ('results_root', str(store / 'asic-results')),
                     ('toolchain', str(tools)), ('python', [str(tools / '.venv/bin/python')]),
                     ('support_tools', [str(tools / 'tt')]), ('pdk_root', [str(tools / 'pdk')]), ('stage_timeout_seconds', ['600'])])

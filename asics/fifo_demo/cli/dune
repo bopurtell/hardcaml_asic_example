@@ -1,4 +1,7 @@
 (executable
- (name project)
+ (name chip)
  (libraries unix core hardcaml_asic hardcaml_asic.execution fifo_asic program_memory sram_budget yojson)
  (preprocess (pps ppx_jane)))
+
+; Published setups can still name the original Dune target.
+(rule (target project.exe) (action (copy %{exe:chip.exe} %{target})))

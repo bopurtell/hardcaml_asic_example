@@ -3,29 +3,29 @@
 ## Source ownership after the layout migration
 
 This specimen lives at `asics/program_memory/`. The combined core, TT adapter,
-and project declaration remain in `project/program_memory.ml`; the CLI and its
-Dune library are also in `project/`. Core/wrapper tests, replay benches,
+and chip target remain in `project/program_memory.ml`; `cli/chip.ml` is its
+standalone CLI. Core/wrapper tests, replay benches,
 `check_bundle.py`, `check_mapped.py`, and `replay_snapshot.py` live in `verif/`.
 Physical capture/package/check harnesses and their shared contracts live in
 `physical/`. The conventional executable targets are:
 
 ```sh
 dune build --build-dir _build_migration_hw -j6 \
-  asics/program_memory/project/memory_cli.exe \
+  asics/program_memory/cli/chip.exe \
   asics/program_memory/verif/memory_test.exe
 ```
 
 The dated acceptance narrative below preserves historical commands and provider
 identities. For current commands, translate `memory/memory_cli.exe` to
-`asics/program_memory/project/memory_cli.exe`, `memory/test/memory_test.exe` to
+`asics/program_memory/cli/chip.exe`, `memory/test/memory_test.exe` to
 `asics/program_memory/verif/memory_test.exe`, and the verification/physical scripts
 according to the ownership above. Retained `acceptance/` snapshots are unchanged.
 
 ## PT4 preparation and live inventory
 
-`memory_cli prepare` invokes public `Preparation_service.run_cli`, constructing
-the project inside the allocated closure and passing `on_phase` to
-`Project.prepare_resources`. `preview` computes the same implementation evidence
+`chip prepare` invokes public `Preparation_service.run_cli`, constructing
+the chip target inside the allocated closure and passing `on_phase` to
+`Chip_target.prepare_resources`. `preview` computes the same implementation evidence
 without publication; `resources` returns a nonpublishing inventory (default
 Implementation, explicit `--simulation` for behavioral elaboration).
 See [commands and acceptance](../../docs/resource_preparation.md).
@@ -38,7 +38,7 @@ SRAM declarations/evidence retain their existing operation/intent behavior.
 Independent of the FIFO, this is a real public `Single_port_ram.create` consumer:
 **256 words × 16 bits, one shared read/write port, read latency one**, stable
 resource ID **`program`**. `program_memory.ml` contains the typed full-width core,
-a small byte-wide TT adapter, and the project declaration. It uses production
+a small byte-wide TT adapter, and the chip declaration. It uses production
 `Technology.ihp_sg13cmos5l`, never an experimental mapping or local macro RTL.
 
 This is the ongoing production-style SRAM consumer. Exact now selects stock
@@ -46,14 +46,14 @@ This is the ongoing production-style SRAM consumer. Exact now selects stock
 original cycle contract and **no new architecture registers**. The existing two
 8-bit TT staging registers remain consumer-owned. The CLI requires independent
 `--selection flops|exact` and `--operation synthesis|hardening` arguments for both
-`check` and `emit`. OCaml `Program_memory.project ?operation` retains its old defaults
+`check` and `emit`. OCaml `Program_memory.chip_target ?operation` retains its old defaults
 when omitted: Exact Synthesis, Flops Hardening.
 
 The Exact declaration includes optional consumer intent using
 `Macro_intent.tt_cmos5l_r0 ~resource:(Resource.Id.of_string_exn "program")
 ~x_um:42. ~y_um:81. ~halo_um:2. ()` for Synthesis, passed with `Flow.librelane ~macros`.
 Explicit Hardening instead declares the candidate **`(40,81)` R0**, same 2 µm halo.
-`Program_memory.project ~with_macro_intent:false Exact` explicitly omits that intent;
+`Program_memory.chip_target ~with_macro_intent:false Exact` explicitly omits that intent;
 the CLI uses the declared intent. The actual emitted instance is
 **`hc_resource_7_program`**. R0, halo and power mappings are declarative intent;
 actual P4 power/physical evidence is identified below. The captured provider supports

@@ -10,7 +10,7 @@
   (source_tree ../../../../ip/controlled_fifo/rtl)
   (source_tree ../../rtl) (source_tree ../../project) (source_tree ../../cli))
  (action
-  (run python3 %{dep:check_bundle.py} --emitter %{exe:../../cli/project.exe}
+  (run python3 %{dep:check_bundle.py} --emitter %{exe:../../cli/chip.exe}
    --exporter %{exe:export_trace.exe} --source-root ../../../.. --bench %{dep:replay.v})))
 
 (rule
@@ -20,5 +20,5 @@
   (source_tree ../../../../ip/controlled_fifo/rtl)
   (source_tree ../../rtl) (source_tree ../../project) (source_tree ../../cli))
  (action
-  (run python3 %{dep:check_bundle.py} --require-rtl --emitter %{exe:../../cli/project.exe}
+  (run python3 %{dep:check_bundle.py} --require-rtl --emitter %{exe:../../cli/chip.exe}
    --exporter %{exe:export_trace.exe} --source-root ../../../.. --bench %{dep:replay.v})))

@@ -15,7 +15,7 @@ TARGETS = (
     'ip/controlled_fifo/verif/simulation/fifo_sim.exe',
     'tooling_acceptance/workloads/workload_emit.exe',
     'tooling_acceptance/workloads/workload_public.exe',
-    'asics/fifo_demo/cli/project.exe',
+    'asics/fifo_demo/cli/chip.exe',
 )
 MODELS = ('RM_IHPSG13_1P_256x16_c2_bm_bist.v',
           'RM_IHPSG13_1P_core_behavioral_bm_bist.v')
