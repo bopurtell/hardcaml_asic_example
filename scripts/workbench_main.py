@@ -391,6 +391,11 @@ def prepare(args, root, store):
     store.mkdir(parents=True, exist_ok=True)
     (store / 'tmp').mkdir(exist_ok=True)
     if args.build:
+        # A fresh build inventories the workspace. Creating the link only after
+        # preparation would make its just-written discovery manifest stale.
+        if not os.path.lexists(root / 'dune-workspace'):
+            configure_dune(root, dict(asic_generation=asic, sdk_prefix=sdk),
+                           SWITCH_BIN.parent / 'lib', Path.home() / '.local/lib')
         build(root, store, asic, sdk)
     sim_path = args.simulation_config
     if sim_path is None:

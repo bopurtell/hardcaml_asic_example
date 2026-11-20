@@ -49,8 +49,22 @@ def source_inventory(root, suite):
     # Re-evaluate root build metadata on every check, detecting additions/deletions
     # as well as edits. inventory recursively covers newly added source files.
     root = Path(root)
-    metadata = tuple(p.name for p in sorted(root.iterdir())
-                     if p.name.startswith('dune') and p.is_file())
+    metadata = []
+    template = 'scripts/dune-workspace.local'
+    for path in sorted(root.iterdir()):
+        if not path.name.startswith('dune'):
+            continue
+        if (path.name == 'dune-workspace' and path.is_symlink()
+                and os.readlink(path) == template):
+            # configure_dune creates exactly this relative link. Inventory the
+            # authored file under its own name so removing the link or replacing
+            # it with a byte-identical regular workspace still changes the keys.
+            source = root / template
+            if source.parent.is_symlink() or source.is_symlink() or not source.is_file():
+                raise ValueError('missing/nonregular workspace template: ' + str(source))
+            metadata.append(template)
+        elif path.is_symlink() or path.is_file():
+            metadata.append(path.name)
     return router.inventory(root, (*SOURCE_PATHS[suite], *metadata))
 
 

@@ -116,6 +116,9 @@ class CheckoutProvider(unittest.TestCase):
                 '--artifact-dir', str(self.directory / 'artifacts')]
 
     def test_prepare_and_real_composite_discovery(self):
+        template = self.root / 'scripts/dune-workspace.local'
+        template.write_bytes((ROOT / 'scripts/dune-workspace.local').read_bytes())
+        (self.root / 'dune-workspace').symlink_to('scripts/dune-workspace.local')
         manifest = self.prepare()
         argv, cwd, env = self.calls[0]
         self.assertEqual(argv[-len(checkout.TARGETS):], list(checkout.TARGETS))
@@ -137,6 +140,54 @@ class CheckoutProvider(unittest.TestCase):
                          [['directed', 'seeded'], ['flops256', 'exact256']])
         for suite in router.SUITES:
             self.assertEqual(checkout.drift(manifest, suite), [])
+
+        template.write_bytes(template.read_bytes() + b'\n; edited after prepare\n')
+        for suite in router.SUITES:
+            self.assertTrue(checkout.drift(manifest, suite), suite)
+        result = self.invoke('discover', '--protocol-version', '1')
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertEqual(result.stdout, '')
+        self.assertIn(checkout.PREPARE, result.stderr)
+        self.prepare()
+        result = self.invoke('discover', '--protocol-version', '1')
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_prepare_only_accepts_exact_workspace_link(self):
+        template = self.root / 'scripts/dune-workspace.local'
+        template.write_text('(lang dune 3.0)\n')
+        for name, target in (
+                ('dune-workspace', './scripts/dune-workspace.local'),
+                ('dune-workspace', str(template)),
+                ('dune-workspace', 'scripts/workbench_git.py'),
+                ('dune-workspace', 'missing'),
+                ('dune-other', 'scripts/dune-workspace.local'),
+                ('ip/controlled_fifo/rtl/alias.ml', 'fixture.ml')):
+            with self.subTest(name=name, target=target):
+                link = self.root / name
+                link.symlink_to(target)
+                try:
+                    with self.assertRaises((ValueError, OSError)):
+                        self.prepare()
+                    self.assertEqual(self.calls, [])
+                finally:
+                    link.unlink()
+
+    def test_prepare_rejects_unsafe_workspace_template(self):
+        (self.root / 'dune-workspace').symlink_to('scripts/dune-workspace.local')
+        template = self.root / 'scripts/dune-workspace.local'
+        outside = self.directory / 'external-template'
+        outside.write_text('(lang dune 3.0)\n')
+        template.symlink_to(outside)
+        with self.assertRaises((ValueError, OSError)):
+            self.prepare()
+        template.unlink()
+        template.write_bytes(outside.read_bytes())
+        scripts = template.parent
+        scripts.rename(self.directory / 'external-scripts')
+        scripts.symlink_to(self.directory / 'external-scripts')
+        with self.assertRaises((ValueError, OSError)):
+            self.prepare()
+        self.assertEqual(self.calls, [])
 
     def test_exec_preserves_child_argv_and_output(self):
         self.prepare()

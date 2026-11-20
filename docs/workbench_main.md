@@ -178,6 +178,11 @@ lock `../.workbench-example-build.lock`; other checkout build helpers should use
 that same lock. No ASIC installation is refreshed implicitly.
 
 After a source rebuild, refresh the Testing catalog / ASIC plan as appropriate.
+The Testing catalog checks its prepared source manifest, including the workspace
+template selected by `scripts/silver.py configure-dune`. After adding that
+workspace or editing its template, run the `build` command above to refresh
+the manifest, then retry simulation discovery. A plain `dune build` alone
+does not write the simulation manifest.
 Simulation source-drift policy is owned by the checkout helper; root companion
 configuration is fenced by Workbench's explicit discovery contract. Ordinary Fresh
 ASIC preparation builds current source and emits its own exact bundle.
