@@ -45,8 +45,9 @@
 
 (rule
  (alias runtest)
- (deps ../bootstrap.sh test_bootstrap.py)
- (action (run python3 %{dep:test_bootstrap.py})))
+ (deps ../bootstrap.sh test_bootstrap.py configure-synthesis.py
+       ../integration/workbench/config_location.py ../integration/workbench/wire.py)
+  (action (run python3 -B %{dep:test_bootstrap.py})))
 
 (rule
  (alias runtest)

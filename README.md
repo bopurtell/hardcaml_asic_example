@@ -4,8 +4,23 @@ Hardware projects and external-consumer qualification for `hardcaml_asic` and
 Silver (formerly Hardcaml Workbench). The original design is a controlled FIFO ASIC; the repository
 also includes a program-memory SRAM ASIC and small tool-qualification fixtures.
 
-To launch the installed app, run `silver` here. If the command isn't found,
-run `./install.sh` once from the [Silver checkout](../silver/README.md#install-and-open-silver).
+**First run on a fresh clone:** with `hardcaml_asic` and [Silver installed](../silver/README.md#install-and-open-silver),
+run these from this example, in the switch where you installed the ASIC libraries:
+
+```sh
+./bootstrap.sh
+silver
+```
+
+Bootstrap provisions the physical tools, builds the FIFO project CLI and
+configures the checkout's Standard flow for Silver. After that, just run
+`silver`. The provider on `PATH` supplies execution; the example's own CLI
+supplies its flow catalog, including `standard / balanced / synthesis`.
+For a checkout whose `_flow_tools` was provisioned before this setup step was
+added, run `python3 -B scripts/configure-synthesis.py` to configure synthesis
+without reprovisioning.
+If Silver was already open when the project was configured for the first time,
+quit it with `q` and reopen it: the running backend caches the ASIC configuration.
 To reopen this example's **prepared** tools and saved session instead, use
 `python3 -B scripts/silver.py open`.
 

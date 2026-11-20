@@ -13,4 +13,20 @@ if [[ $script_dir == "${BASH_SOURCE[0]}" ]]; then
     script_dir=.
 fi
 project_root=$(CDPATH= cd -- "$script_dir" && pwd -P)
-exec hardcaml-asic-flow provision --toolchain "${TOOLCHAIN:-$project_root/_flow_tools}" "$@"
+default_tools=${TOOLCHAIN:-$project_root/_flow_tools}
+provision=(hardcaml-asic-flow provision --toolchain "$default_tools" "$@")
+tools=$default_tools
+# Only configure after a provisioning run. Delegate informational modes and
+# unknown arguments directly, retaining the installed CLI's diagnostics/status.
+while (($#)); do
+    case $1 in
+        --toolchain) (($# >= 2)) || exec "${provision[@]}"; tools=$2; shift ;;
+        --toolchain=*) tools=${1#*=} ;;
+        --python) (($# >= 2)) || exec "${provision[@]}"; shift ;;
+        --python=*|--offline|--no-container) ;;
+        *) exec "${provision[@]}" ;;
+    esac
+    shift
+done
+"${provision[@]}"
+exec python3 -B "$project_root/scripts/configure-synthesis.py" --toolchain="$tools"

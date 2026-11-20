@@ -1,4 +1,4 @@
-"""Bootstrap contract tests using only a disposable installed-CLI recorder."""
+"""Exercise real checkout setup with disposable installed-provider and build tools."""
 import json
 import os
 from pathlib import Path
@@ -12,6 +12,12 @@ import unittest
 
 
 BOOTSTRAP = Path(__file__).resolve().parent.parent / "bootstrap.sh"
+sys.path.insert(0, str(BOOTSTRAP.parent / "integration/workbench"))
+from wire import parse
+
+TARGET = "asics/fifo_demo/cli/project.exe"
+ASIC = "hardcaml-workbench-asic.sexp"
+PREP = "hardcaml-workbench-preparation.sexp"
 RECORDER = r'''
 import json
 import os
@@ -39,6 +45,11 @@ class BootstrapTests(unittest.TestCase):
         self.project.mkdir()
         self.wrapper = self.project / "bootstrap.sh"
         shutil.copy2(BOOTSTRAP, self.wrapper)
+        for source in ("scripts/configure-synthesis.py", "integration/workbench/wire.py",
+                       "integration/workbench/config_location.py"):
+            dest = self.project / source
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(BOOTSTRAP.parent / source, dest)
         self.caller = self.root / "caller's cwd"
         self.caller.mkdir()
         self.bin = self.root / "installed bin"
@@ -52,7 +63,30 @@ class BootstrapTests(unittest.TestCase):
                                  + " -c " + self.shell_quote(RECORDER) + ' "$@"\n')
         self.recorder.chmod(0o755)
         self.record = self.root / "record.json"
+        (self.bin / "python3").symlink_to(sys.executable)
+        opam = self.bin / "opam"
+        opam.write_text('#!/bin/bash\n[[ $1 == exec && $2 == -- ]] || exit 64\n'
+                        'shift 2\nexec "$@"\n')
+        opam.chmod(0o755)
+        dune = self.bin / "dune"
+        dune.write_text("#!/bin/bash\nexec python3 -c " + self.shell_quote(r'''
+import json, os, sys
+from pathlib import Path
+args = sys.argv[1:]
+if not os.environ.get("ALREADY_PROVISIONED"):
+    assert Path(os.environ["RECORD"]).is_file(), "build before provision"
+Path(os.environ["BUILD_RECORD"]).write_text(json.dumps(args))
+if os.environ.get("BUILD_FAIL"):
+    sys.exit(42)
+target = Path(args[args.index("--root") + 1]) / "_build/default" / args[-1]
+target.parent.mkdir(parents=True, exist_ok=True)
+target.write_text("#!/bin/sh\nexit 0\n")
+target.chmod(0o755)
+''') + ' "$@"\n')
+        dune.chmod(0o755)
+        self.build_record = self.root / "build.json"
         self.env = {"PATH": str(self.bin), "RECORD": str(self.record),
+                    "BUILD_RECORD": str(self.build_record),
                     "SENTINEL": "owner's environment", "TT": "unchanged tt",
                     "FLOW_PY": "unchanged python"}
 
@@ -78,14 +112,36 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(record["env"], {key: self.env.get(key) for key in record["env"]})
         self.assertFalse((self.project / "_flow_tools").exists())
 
-    def test_no_arguments_delegates_provision_from_any_cwd(self):
+    def test_no_arguments_provisions_then_configures_fifo_from_any_cwd(self):
         self.assertTrue(os.access(BOOTSTRAP, os.X_OK))
         self.assert_forwarded([])
+        argv = json.loads(self.build_record.read_text())
+        self.assertEqual(argv[0], "build")
+        self.assertIn(TARGET, argv)
+        configs = self.project / ".workbench"
+        fields = dict(parse((configs / ASIC).read_text()))
+        self.assertEqual(fields["project_executable"], str(self.project / "_build/default" / TARGET))
+        self.assertEqual(fields["toolchain"], str(self.project / "_flow_tools"))
+        self.assertEqual(dict(parse((configs / PREP).read_text()))["build_target"], TARGET)
+        self.assertFalse((self.project / ASIC).exists())
+        self.assertFalse((self.project / PREP).exists())
         result = self.invoke(cwd=self.project, command="./bootstrap.sh")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.recorded()["argv"],
                          ["provision", "--toolchain", str(self.project / "_flow_tools")])
         self.assertEqual(self.recorded()["cwd"], str(self.project))
+
+    def test_setup_existing_tools_without_reprovisioning(self):
+        tools = self.project / "_flow_tools"
+        tools.mkdir()
+        self.env["ALREADY_PROVISIONED"] = "1"
+        result = self.invoke("-B", str(self.project / "scripts/configure-synthesis.py"),
+                             command=self.bin / "python3")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(self.build_record.is_file())
+        self.assertFalse(self.record.exists())
+        config = dict(parse((self.project / ".workbench" / ASIC).read_text()))
+        self.assertEqual(config["toolchain"], str(tools))
 
     def test_relative_script_path_and_cdpath(self):
         self.env["CDPATH"] = str(self.root)
@@ -117,10 +173,74 @@ class BootstrapTests(unittest.TestCase):
 
     def test_explicit_root_follows_default(self):
         self.assert_forwarded(["--toolchain", "caller's tools"])
+        fields = dict(parse((self.project / ".workbench" / ASIC).read_text()))
+        tools = self.caller / "caller's tools"
+        self.assertEqual(fields["toolchain"], str(tools))
+        for key, relative in (("pdk_root", "pdk"), ("support_tools", "tt"),
+                              ("python", ".venv/bin/python")):
+            self.assertEqual(fields[key], [str(tools / relative)])
+
+    def test_mixed_existing_locations_preserved_without_duplicate_configs(self):
+        root_config = self.project / ASIC
+        root_config.write_bytes(b"owner's root selection\n")
+        self.assert_forwarded([])
+        local = self.project / ".workbench"
+        self.assertFalse((local / ASIC).exists())
+        self.assertTrue((local / PREP).is_file())
+        (local / PREP).write_bytes(b"owner's preparation\n")
+        self.assert_forwarded([])
+        self.assertEqual(root_config.read_bytes(), b"owner's root selection\n")
+        self.assertEqual((local / PREP).read_bytes(), b"owner's preparation\n")
+        self.assertFalse((self.project / PREP).exists())
+        self.assertFalse(self.build_record.exists())
+
+    def test_conflicting_copies_refused_before_build_or_publication(self):
+        local = self.project / ".workbench"
+        local.mkdir()
+        for directory in (local, self.project):
+            (directory / PREP).write_text(str(directory))
+        self.assertNotEqual(self.invoke().returncode, 0)
+        for directory in (local, self.project):
+            self.assertEqual((directory / PREP).read_text(), str(directory))
+            self.assertFalse((directory / ASIC).exists())
+        self.assertFalse(self.build_record.exists())
+
+    def test_failed_provision_or_build_never_publishes_configs(self):
+        self.env["EXIT_CODE"] = "37"
+        self.assertEqual(self.invoke().returncode, 37)
+        self.assertFalse(self.build_record.exists())
+        self.assertFalse((self.project / ".workbench").exists())
+        del self.env["EXIT_CODE"]
+        self.env["BUILD_FAIL"] = "1"
+        self.assertEqual(self.invoke().returncode, 42)
+        self.assertFalse((self.project / ".workbench").exists())
 
     def test_provider_modes_and_base_python_forwarded_verbatim(self):
         self.assert_forwarded(["--check", "--offline", "--no-container",
                                "--python", "relative python's prefix/bin/python3.11"])
+
+    def test_check_preserves_fresh_and_configured_checkout(self):
+        def snapshot():
+            return {p.relative_to(self.project): (p.stat().st_mode, p.stat().st_mtime_ns,
+                                                  p.read_bytes() if p.is_file() else None)
+                    for p in [self.project, *self.project.rglob("*")]}
+
+        for configured in (False, True):
+            with self.subTest(configured=configured):
+                if configured:
+                    config = self.project / ".workbench/hardcaml-workbench-asic.sexp"
+                    config.parent.mkdir()
+                    config.write_text("owner's ASIC selection\n")
+                    (self.project / "dune-workspace").write_text("owner's workspace\n")
+                for status in (0, 1):
+                    before = snapshot()
+                    self.env["EXIT_CODE"] = str(status)
+                    result = self.invoke("--check")
+                    self.assertEqual(result.returncode, status, result.stderr)
+                    self.assertEqual(self.recorded()["argv"], ["provision", "--toolchain",
+                                     str(self.project / "_flow_tools"), "--check"])
+                    self.assertEqual(snapshot(), before)
+                    self.assertFalse(self.build_record.exists())
 
     def test_help_is_delegated(self):
         self.assert_forwarded(["--help"])
