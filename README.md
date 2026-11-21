@@ -30,8 +30,10 @@ silver --standalone
 
 Reopen Silver after setup. The suite catalog loads **Controlled FIFO** (`controlled-fifo`)
 and **Memory workloads** (`memory-workloads`) in the background. In
-Testing, focus Catalog, choose a suite and cases, and press Enter to open the
-launch form. Press `d` to refresh or retry discovery. After the
+Testing, focus Catalog, choose a suite and cases, and press `R` to run them with
+the displayed settings. Use `e` to change settings without running, or Enter to
+review and edit inputs for a single launch. Press `d` to
+refresh or retry discovery. After the
 run passes, select its VCD in Artifacts (`w` to view, `e` to export).
 After changing simulation sources or upgrading a checkout from the old
 `pt8-memory-workloads` suite ID, run `python3 -B scripts/configure-simulation.py --refresh`.
