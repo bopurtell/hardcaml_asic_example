@@ -48,8 +48,10 @@ acceptance/                  Retained evidence, not the active hardware source t
 
 ### Chip target migration (WB-082)
 
-The Dune root is the **project**. Each registered **chip target** has an
-`asics/<id>/cli/chip.exe` entry in `hardcaml-asic-targets.json`. The two
+The Dune root is the **project**. `hardcaml-asic-targets.json` maps registered
+**chip target** IDs to executable paths. The default target is `controlled_fifo`
+with variant `default`. It still uses `asics/fifo_demo/cli/chip.exe` and emits
+the Tiny Tapeout top `tt_um_controlled_fifo`. The two
 `project/` library directories retain their Dune library names. Use
 `Fifo_asic.chip_target`, `Program_memory.chip_target`, or `Sram_budget.chip_target`
 to construct a `Hardcaml_asic.Chip_target.t`; the old `.project` functions remain
@@ -58,6 +60,8 @@ aliases. `fifo_chip.ml` holds the former FIFO `project.ml` declaration.
 Existing `asics/fifo_demo/cli/project.exe` and
 `asics/program_memory/project/memory_cli.exe` build the same binaries as the new
 paths. Use `chip list --json` on the FIFO CLI instead of `project chip list --json`.
+If Silver has a saved `fifo_demo/default` selection, use the launch-target
+picker to select `controlled_fifo/default`.
 `project_name` in protocol output and `project_executable` in Silver config keep
 their wire spellings. Source inventories change with source moves: derive a fresh
 plan identity before emitting or running; historical bundles keep their old paths.

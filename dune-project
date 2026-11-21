@@ -1,2 +1,2 @@
 (lang dune 3.17)
-(name controlled_fifo_specimen)
+(name hardcaml_asic_example)

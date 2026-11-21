@@ -150,7 +150,7 @@ type chip =
 
 let router_inputs = [ "asics/fifo_demo/cli/chip.ml"; "asics/fifo_demo/cli/dune" ]
 let fifo =
-  { id = "fifo_demo"; label = "Controlled FIFO"
+  { id = "controlled_fifo"; label = "Controlled FIFO"
   ; default = { id = "default"; label = "16 × 8 FIFO"; chip_target = Fifo_asic.chip_target }
   ; others = []; catalog = (fun () -> Fifo_asic.Flow_catalog.create () |> Or_error.ok_exn)
   ; catalog_inputs = Fifo_asic.Flow_catalog.source_inputs }

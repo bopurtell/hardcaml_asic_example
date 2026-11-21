@@ -245,7 +245,20 @@ class CheckoutProvider(unittest.TestCase):
         self.assertEqual(manifest['manifest_path'], str(state / 'manifest.json'))
         command = manifest['provider_commands']['pt8-memory-workloads']
         self.assertEqual(command[command.index('--output-root') + 1], str(state / 'workloads'))
-        self.assertEqual(checkout.PREPARE, 'python scripts/workbench_main.py build')
+        self.assertEqual(checkout.PREPARE, 'python3 -B scripts/silver.py build')
+
+    def test_installed_discovery_and_run_report_same_refresh(self):
+        self.options['installed_package'] = True
+        (self.generation / 'lib/hardcaml_asic').mkdir()
+        self.prepare()
+        result = self.invoke('discover', '--protocol-version', '1')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        (self.root / 'ip/controlled_fifo/rtl/fixture.ml').write_text('edited\n')
+        for args in (('discover', '--protocol-version', '1'), self.run_args(self.request())):
+            result = self.invoke(*args)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn(checkout.REFRESH, result.stderr)
+            self.assertNotIn(checkout.PREPARE, result.stderr)
 
     def test_reject_source_add_edit_delete_and_target_drift(self):
         self.prepare()

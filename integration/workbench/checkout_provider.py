@@ -9,7 +9,8 @@ sys.dont_write_bytecode = True
 import workbench_provider as router
 
 LAYOUT = 'checkout-v1'
-PREPARE = 'python scripts/workbench_main.py build'
+PREPARE = 'python3 -B scripts/silver.py build'
+REFRESH = 'python3 -B scripts/configure-simulation.py --refresh'
 TARGETS = (
     'ip/controlled_fifo/verif/simulation/test_provider.exe',
     'ip/controlled_fifo/verif/simulation/fifo_sim.exe',
@@ -104,14 +105,17 @@ def drift(manifest, suite):
         return ['inventory unavailable: ' + str(error)]
 
 
+def refresh_command(manifest):
+    return REFRESH if manifest.get('installed_package') else PREPARE
+
+
 def validate_manifest(manifest, operation):
-    prepare = ('python3 -B scripts/configure-simulation.py --refresh'
-               if manifest.get('installed_package') else PREPARE)
+    prepare = refresh_command(manifest)
     if manifest.get('checkout_layout') != LAYOUT or manifest.get('source_layout') != router.SOURCE_LAYOUT:
-        raise ValueError('checkout simulation manifest unavailable; run ' + PREPARE)
+        raise ValueError('checkout simulation manifest unavailable; run ' + prepare)
     for key in ('suite_sources', 'suite_targets', 'suite_executables', 'target_hashes', 'provider_commands'):
         if set(manifest.get(key, {})) != set(router.SUITES):
-            raise ValueError('invalid checkout simulation manifest; run ' + PREPARE)
+            raise ValueError('invalid checkout simulation manifest; run ' + prepare)
     if operation == 'discover':
         for suite in router.SUITES:
             changed = drift(manifest, suite)
@@ -122,7 +126,8 @@ def validate_manifest(manifest, operation):
 
 def main(argv=None):
     return router.main(argv, manifest_check=validate_manifest, drift_check=drift,
-                       stale_guidance='run ' + PREPARE, environment_factory=environment)
+                       stale_guidance=lambda manifest: 'run ' + refresh_command(manifest),
+                       environment_factory=environment)
 
 
 if __name__ == '__main__':

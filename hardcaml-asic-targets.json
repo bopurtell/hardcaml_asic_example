@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "default_target": "fifo_demo",
+  "default_target": "controlled_fifo",
   "targets": [
-    { "id": "fifo_demo", "executable": "asics/fifo_demo/cli/chip.exe" },
+    { "id": "controlled_fifo", "executable": "asics/fifo_demo/cli/chip.exe" },
     {
       "id": "program_memory",
       "executable": "asics/program_memory/cli/chip.exe"

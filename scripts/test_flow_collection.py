@@ -60,14 +60,14 @@ def main():
             return dest
 
         initial = listing()["declaration"]
-        fifo = ("--chip", "fifo_demo", "--variant", "default")
+        fifo = ("--chip", "controlled_fifo", "--variant", "default")
         assert initial == listing(*fifo)["declaration"]
         assert initial["default"] == {"flow": "standard", "profile": "balanced"}
         other_flows = {id: entry for id, entry in entries(initial).items() if id != "standard"}
         memory = ("dune", "exec", "./asics/program_memory/cli/chip.exe", "--", "flow", "list")
         memory_catalog = json.loads(command(*memory, "--json"))
         assert json.loads(command(*memory, "--chip", "program_memory", "--json")) == memory_catalog
-        command(*memory, "--chip", "fifo_demo", "--json", error="Usage:")
+        command(*memory, "--chip", "controlled_fifo", "--json", error="Usage:")
         memory_target = ("--chip", "program_memory", "--variant", "default")
         assert listing(*memory_target) == memory_catalog
         assert memory_catalog["declaration"]["default"] == {

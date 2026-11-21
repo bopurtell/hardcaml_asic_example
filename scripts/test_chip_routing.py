@@ -34,11 +34,14 @@ with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
     catalog = cli('list')
     assert cli('chip', 'list') == catalog  # pre-migration invocation
     chips = {c['id']: c for c in catalog['chips']}
-    assert catalog['schema_version'] == 1 and catalog['default_chip'] == 'fifo_demo'
+    assert catalog['schema_version'] == 1 and catalog['default_chip'] == 'controlled_fifo'
     project_catalog = json.loads((ROOT / 'hardcaml-asic-targets.json').read_text())
     assert len(chips) == len(catalog['chips'])
-    assert set(chips) == {'fifo_demo', 'program_memory', 'sram_budget'} | {
+    assert 'fifo_demo' not in chips
+    assert set(chips) == {'controlled_fifo', 'program_memory', 'sram_budget'} | {
         row['id'] for row in project_catalog['targets']}
+    assert chips['controlled_fifo']['default_variant'] == 'default'
+    assert [v['id'] for v in chips['controlled_fifo']['variants']] == ['default']
     assert all(c['default_variant'] in {v['id'] for v in c['variants']} for c in chips.values())
     # A fresh registration is visible before its executable is built. Verify
     # dispatch uses the compatibility router's own context and preserves argv.
@@ -65,9 +68,12 @@ with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
     child.chmod(0o755)
     assert json.loads(routed(*argv).stdout) == argv
     baseline = cli('flow', 'plan', '--endpoint', 'synthesis')
-    assert baseline == cli('flow', 'plan', '--chip', 'fifo_demo', '--variant', 'default', '--endpoint', 'synthesis')
-    assert json.loads(baseline['bundle_manifest'])['top_module'] == 'tt_um_controlled_fifo'
-    check_clock_and_ip(json.loads(baseline['bundle_manifest']), 1000 / 48, fifo_ip=True)
+    assert baseline == cli('flow', 'plan', '--chip', 'controlled_fifo', '--variant', 'default', '--endpoint', 'synthesis')
+    assert baseline['project_name'] == 'controlled_fifo'
+    fifo_manifest = json.loads(baseline['bundle_manifest'])
+    assert fifo_manifest['project'] == 'controlled_fifo'
+    assert fifo_manifest['top_module'] == 'tt_um_controlled_fifo'
+    check_clock_and_ip(fifo_manifest, 1000 / 48, fifo_ip=True)
 
     target = ['--chip', 'program_memory', '--variant', 'default']
     flow = cli('flow', 'list', *target)['declaration']
@@ -129,7 +135,7 @@ with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
     assert ids[0] != ids[1]
     assert 'stale' in cli('flow', 'emit', *route, '--results-root', store, '--expected-plan-identity', ids[0], ok=False)
     for command in ['list', 'describe', 'plan', 'emit', 'run']:
-        assert 'Unknown variant' in cli('flow', command, '--chip', 'fifo_demo', '--variant', 'three_slot', ok=False)
+        assert 'Unknown variant' in cli('flow', command, '--chip', 'controlled_fifo', '--variant', 'three_slot', ok=False)
         assert 'Unknown chip' in cli('flow', command, '--chip', 'missing', ok=False)
     cli('emit', '--variant', 'three_slot', ok=False)
-    cli('emit', '--chip', 'fifo_demo', '--chip', 'sram_budget', ok=False)
+    cli('emit', '--chip', 'controlled_fifo', '--chip', 'sram_budget', ok=False)

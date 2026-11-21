@@ -216,8 +216,9 @@ def main(argv=None, *, manifest_check=None, drift_check=source_drift,
         raise ValueError('unknown suite')
     drift = drift_check(manifest, suite)
     if drift:
+        guidance = stale_guidance(manifest) if callable(stale_guidance) else stale_guidance
         raise ValueError('stale ' + suite + ' source capture (' + ', '.join(drift[:8]) +
-                         '); ' + stale_guidance)
+                         '); ' + guidance)
     # Strip ONLY the router prefix. All operation/request/events/artifact argv is original.
     for index, token in enumerate(original):
         if token == '--manifest':

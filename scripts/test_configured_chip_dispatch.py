@@ -56,7 +56,7 @@ class ConfiguredChipDispatch(unittest.TestCase):
 
             def chips():
                 result = query(cli, 'chip', 'list')
-                self.assertEqual(result['default_chip'], 'fifo_demo')
+                self.assertEqual(result['default_chip'], 'controlled_fifo')
                 rows = {chip['id']: chip for chip in result['chips']}
                 self.assertEqual(len(rows), len(result['chips']))
                 return rows
@@ -91,7 +91,8 @@ class ConfiguredChipDispatch(unittest.TestCase):
             self.assertEqual(json.loads(actual['bundle_manifest'])['top_module'], 'tt_um_dispatchprobe')
             args = ('flow', 'plan', '--endpoint', 'synthesis')
             default = query(cli, *args)
-            self.assertEqual(default, query(cli, *args, '--chip', 'fifo_demo', '--variant', 'default'))
+            self.assertEqual(default, query(cli, *args, '--chip', 'controlled_fifo', '--variant', 'default'))
+            self.assertEqual(default['project_name'], 'controlled_fifo')
             self.assertEqual(json.loads(default['bundle_manifest'])['top_module'], 'tt_um_controlled_fifo')
             self.assertFalse((root / '_flow_results').exists())
 

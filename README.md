@@ -14,7 +14,8 @@ silver --standalone
 
 Bootstrap provisions the physical tools, builds the FIFO chip CLI and
 configures the checkout's Standard flow and two simulation suites for Silver.
-After that, just run `silver --standalone`. The provider on `PATH` supplies execution; the example's own CLI
+After that, run `silver --standalone`. Silver shows **Project: `hardcaml_asic_example`**.
+Its default launch target is **`controlled_fifo / default`**. The provider on `PATH` supplies execution; the example's own CLI
 supplies its flow catalog, including `standard / balanced / synthesis`.
 For a checkout whose `_flow_tools` was provisioned before this setup step was
 added, run `python3 -B scripts/configure-synthesis.py` to configure synthesis
@@ -27,8 +28,9 @@ silver-simulation-setup check --root "$PWD"  # lists 2 suites / 5 cases
 silver --standalone
 ```
 
-Reopen Silver after setup. In Testing, focus Catalog, press `d` to discover,
-choose a suite and cases, and press Enter to open the launch form. After the
+Reopen Silver after setup. The suite catalog loads in the background. In
+Testing, focus Catalog, choose a suite and cases, and press Enter to open the
+launch form. Press `d` to refresh or retry discovery. After the
 run passes, select its VCD in Artifacts (`w` to view, `e` to export).
 After changing simulation sources, run `python3 -B scripts/configure-simulation.py --refresh`.
 The companion and manifest are machine-local and ignored by Git: a fresh clone
@@ -129,12 +131,12 @@ and invoke the project's standalone chip executables without Silver:
 ```sh
 hardcaml-asic-targets list
 hardcaml-asic-targets select --target program_memory
-hardcaml-asic-targets exec --target fifo_demo -- describe --json
+hardcaml-asic-targets exec --target controlled_fifo -- describe --json
 hardcaml-asic-targets exec --target program_memory -- flow list --json
 ```
 
-[`hardcaml-asic-targets.json`](hardcaml-asic-targets.json) registers these two
-entry points; FIFO is the default. The program-memory route invokes its own
+[`hardcaml-asic-targets.json`](hardcaml-asic-targets.json) registers the project's
+entry points; `controlled_fifo` is the default. The program-memory route invokes its own
 `asics/program_memory/cli/chip.exe`. Removing its entry hides it from provider discovery, but
 `dune exec ./asics/program_memory/cli/chip.exe -- flow list --json`
 still works. Each chip owns its hardware declaration and named flows.
@@ -165,7 +167,7 @@ the variant selects that chip's default.
 
 | Chip | Variant | Named flow / default profile | Latest endpoint |
 | --- | --- | --- | --- |
-| `fifo_demo` (default) | `default` | `standard` / `balanced` | `signoff` |
+| `controlled_fifo` (default) | `default` | `standard` / `balanced` | `signoff` |
 | `program_memory` | `default` | `stock256-r0` / `qualification` | `timing` |
 | `sram_budget` | `two_slot` (default), `three_slot` | `standard` / `balanced` | `synthesis` |
 

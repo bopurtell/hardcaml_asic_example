@@ -32,13 +32,18 @@ def check(provider, root):
     catalog = run(root, provider, 'list')
     assert catalog == manifest
     entries = {entry['id']: entry for entry in catalog['targets']}
-    assert run(root, provider, 'select') == entries['fifo_demo']
+    assert catalog['default_target'] == 'controlled_fifo'
+    assert 'fifo_demo' not in entries
+    assert run(root, provider, 'select') == entries['controlled_fifo']
+    default = run(root, provider, 'exec', '--', 'describe', '--json')
+    assert default['project_name'] == 'controlled_fifo'
+    assert '(top tt_um_controlled_fifo)' in default['declaration_sexp']
     expected = {
-        'fifo_demo': ('controlled_fifo_specimen', 'standard', 'balanced'),
-        'program_memory': ('program_memory_specimen', 'stock256-r0', 'qualification'),
+        'controlled_fifo': ('asics/fifo_demo/cli/chip.exe', 'controlled_fifo', 'standard', 'balanced'),
+        'program_memory': ('asics/program_memory/cli/chip.exe', 'program_memory_specimen', 'stock256-r0', 'qualification'),
     }
-    for chip, (name, flow, profile) in expected.items():
-        assert entries[chip]['executable'] == f'asics/{chip}/cli/chip.exe'
+    for chip, (executable, name, flow, profile) in expected.items():
+        assert entries[chip]['executable'] == executable
         assert run(root, provider, 'select', '--target', chip) == entries[chip]
         invoke = [provider, 'exec', '--target', chip, '--']
         assert run(root, *invoke, 'describe', '--json')['project_name'] == name
@@ -51,12 +56,12 @@ def check(provider, root):
     manifest['targets'] = [entry for entry in manifest['targets'] if entry['id'] != 'program_memory']
     path.write_text(json.dumps(manifest))
     assert run(root, provider, 'list')['targets'] == manifest['targets']
-    run(root, provider, 'select', '--target', 'program_memory', error=['unknown', 'program_memory', 'fifo_demo'])
+    run(root, provider, 'select', '--target', 'program_memory', error=['unknown', 'program_memory', 'controlled_fifo'])
     run(root, provider, 'exec', '--target', 'program_memory', '--', 'describe', '--json',
         error=['unknown', 'program_memory'])
     subprocess.run(['dune', 'clean', '--root', '.'], cwd=root, check=True)
     direct = './' + entries['program_memory']['executable']
-    assert run(root, 'dune', 'exec', '--root', '.', direct, '--', 'describe', '--json')['project_name'] == expected['program_memory'][0]
+    assert run(root, 'dune', 'exec', '--root', '.', direct, '--', 'describe', '--json')['project_name'] == expected['program_memory'][1]
 
 
 if __name__ == '__main__':

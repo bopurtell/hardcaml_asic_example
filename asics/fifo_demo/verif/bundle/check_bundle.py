@@ -49,7 +49,7 @@ def inspect(output, response, source, inputs):
         require(x["copy"] == "inputs/" + x["path"], "copy path")
         data = (source / x["path"]).read_bytes()
         require(data == files[x["copy"]] and digest(data) == x["sha256"], f"source bytes/hash {x}")
-    require(m["top_module"] == "tt_um_controlled_fifo" and m["project"] == "controlled_fifo_specimen", "top/project")
+    require(m["top_module"] == "tt_um_controlled_fifo" and m["project"] == "controlled_fifo", "top/project")
     require(m["adapter"] == "LibreLane" and m["operation"] == "Hardening", "operation")
     require(m["target"]["technology"] == "ihp-sg13cmos5l" and m["target"]["tiles"] == "6x4", "target")
     require(m["target"]["harness"] == "(Tiny_tapeout (tiles T6x4))", "harness")

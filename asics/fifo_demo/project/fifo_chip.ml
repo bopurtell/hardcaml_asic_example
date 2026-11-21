@@ -56,7 +56,7 @@ let create () =
   in
   Hardcaml_asic.Chip_target.create
     ~source_inputs
-    ~name:"controlled_fifo_specimen"
+    ~name:"controlled_fifo"
     ~metadata:
       { title = "Controlled FIFO"
       ; author = "hardcaml_asic_example"

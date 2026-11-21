@@ -22,10 +22,10 @@ def main():
             return result
 
         description = check(["describe"], 0).stdout
-        for fact in ("controlled_fifo_specimen", "tt_um_controlled_fifo", "clk",
+        for fact in ("controlled_fifo", "tt_um_controlled_fifo", "clk",
                      "timing", "pinout", "policy", "source_inputs"):
             assert fact in description, (fact, description)
-        assert json.loads(check(["describe", "--json", "--verbose"], 0).stdout)["project_name"] == "controlled_fifo_specimen"
+        assert json.loads(check(["describe", "--json", "--verbose"], 0).stdout)["project_name"] == "controlled_fifo"
         for args, mode in ((["resources", "--json"], "implementation"),
                            (["resources", "--simulation", "--json"], "simulation")):
             inventory = json.loads(check(args, 0).stdout)
