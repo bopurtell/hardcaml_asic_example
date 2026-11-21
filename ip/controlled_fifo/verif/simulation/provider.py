@@ -11,16 +11,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'integration/workbe
 from wire import Events, parse, record, sexp
 
 SUITE = 'controlled-fifo'
-CASES = ('directed', 'seeded')
+CASES = ('directed', 'seeded', 'export-stress')
 PARAMETERS = {'cycles': ('4096', ['64', '4096', '20000']),
-              'checker': ('normal', ['normal', 'mismatch'])}
+              'checker': ('normal', ['normal', 'mismatch']),
+              'trace_mib': ('1', ['1', '16', '64'])}
 
 
 def catalog():
     return [('protocol_version', 1), ('suites', [[
         ('id', SUITE), ('label', 'Controlled FIFO / independent list checker'),
         ('cases', [[('id', case), ('label', 'FIFO ' + case)] for case in CASES]),
-        ('parameters', [[('key', k), ('label', k), ('default', default), ('choices', choices)]
+        ('parameters', [[('key', k),
+                         ('label', 'export-stress VCD size (MiB; other cases ignore)' if k == 'trace_mib' else k),
+                         ('default', default), ('choices', choices)]
                         for k, (default, choices) in sorted(PARAMETERS.items())]),
         ('default_seed', '42')]])]
 
@@ -54,7 +57,9 @@ def run(args):
         for case in sel['cases']:
             events.emit(['Case_started', case])
             print(f"FIFO {case} seed={sel['seed']} words={words} parameters={params}", flush=True)
-            process = subprocess.Popen([str(args.simulator), case, sel['seed'], words, params['cycles'],
+            export_stress = case == 'export-stress'
+            extent = params['trace_mib' if export_stress else 'cycles']
+            process = subprocess.Popen([str(args.simulator), case, sel['seed'], words, extent,
                                         str(args.artifact_dir / (case + '.vcd')),
                                         str(args.artifact_dir / (case + '.sexp')), params['checker']],
                                        stdout=subprocess.PIPE, text=True)
@@ -64,7 +69,9 @@ def run(args):
                 print(line, end='', flush=True)
                 if line.startswith('PROGRESS '):
                     _, completed, total = line.split()
-                    events.progress(case, int(completed), int(total))
+                    events.emit(['Progress', [('case_id', [case]), ('completed', int(completed)),
+                                             ('total', [int(total)]),
+                                             ('unit_', 'VCD bytes' if export_stress else 'FIFO edges')]])
                 elif line.startswith('CHECK_FAILED ') and message is None:
                     # Keep the case row concise; full stimulus/history remain in
                     # native stdout and the immutable native report artifact.

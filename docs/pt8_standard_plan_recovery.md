@@ -19,7 +19,7 @@ Workbench/backend changes require coordinator agreement; frontend is another sli
    driver can then use the real private source root without path rewriting.
 3. Activate the selected captured provider in setup and launcher for nested builds.
    Use switch `5.2.0+ox`, explicit `-j2`, and shared ASIC/example locks; any WB
-   build uses `/tmp/opencode/workbench-pt8-build.lock`. Preparation must build and
+   build uses `/tmp/opencode/workbench-build.lock`. Preparation must build and
    execute in the private project, with all writable build/results/state paths
    inside the new session. Tool/PDK collateral may be read from the owner tree.
 4. Create a new immutable recovery session, retaining all old sessions/failures.
@@ -81,7 +81,7 @@ Corrections are confined to example scripts:
   below the session. Existing session manifests retain their old launch behavior.
 - `pt8_workbench_dune.py`: new captures enforce **two** jobs under the example lock;
   options precede `--`; build output is the private `_build/default` that stock
-  preparation executes. Setup prebuild is a separate private `_build_pt8_workbench`.
+  preparation executes. Setup prebuild is a separate private `_build_workbench`.
   Existing sessions' captured shims are unchanged.
 
 No Workbench/backend/frontend or ASIC source was edited or rebuilt by this slice.
@@ -111,7 +111,7 @@ Passing evidence below the new session:
 The setup's `commands/02/command.json` records the real private prebuild:
 
 ```sh
-dune build -j 2 --root "$SESSION/project" --build-dir _build_pt8_workbench \
+dune build -j 2 --root "$SESSION/project" --build-dir _build_workbench \
   workloads/workload_emit.exe workloads/workload_public.exe bin/project.exe
 ```
 
@@ -162,7 +162,7 @@ The new captured FIFO binary has the same SHA256 as the original above.
   Dune climbed out of `.dev` to the owner root, then exited1 with `Don't know how
   to build workloads/workload_emit.exe`; it did not compile targets. Its diagnostic
   build-cache/log activity was therefore at the owner's existing
-  `_build_pt8_workbench`, an unintended early-attempt side effect. This is retained
+  `_build_workbench`, an unintended early-attempt side effect. This is retained
   and disclosed, not claimed as a fully isolated successful attempt. Explicit
   `--root` fixes this; all successful builds use the private project.
 - `standard-acceptance-76f8bf68db444d8d9bb422e54d404ff5`: daemon rejected duplicate

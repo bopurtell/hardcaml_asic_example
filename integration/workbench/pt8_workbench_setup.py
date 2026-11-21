@@ -18,7 +18,7 @@ from workbench_provider import SOURCE_LAYOUT
 from workbench_dev import copy_sources
 
 BASE = ROOT / '.dev/asic-pt8-workbench'
-BUILD = '_build_pt8_workbench'
+BUILD = '_build_workbench'
 
 
 def main():

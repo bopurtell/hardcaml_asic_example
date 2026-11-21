@@ -80,7 +80,7 @@ def main():
     prior = json.loads(direct.read_text())
     results = {}
     from wire import parse
-    probe = WB / '_build_pt8_workbench/default/terminal/waveform_probe.exe'
+    probe = WB / '_build_workbench/default/terminal/waveform_probe.exe'
     for case, receipt in prior['results'].items():
         wave = Path(receipt['result']).with_name('waveform.vcd')
         descriptor = producer.validate_waveform(wave, 1307)

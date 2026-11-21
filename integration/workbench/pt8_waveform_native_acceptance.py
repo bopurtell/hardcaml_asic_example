@@ -47,7 +47,7 @@ def main():
                 return http.rpc(op if isinstance(op, str) else sexp(op), domain='simulation', wait=False)
             terminal = Terminal(launch + ['client'] + common, env, output)
             terminal.capture('startup', ['Connection: connected', 'Overview', 'Testing'])
-            terminal.palette('Workloads: Launch fresh PT.8 workload')
+            terminal.palette('Workloads: Launch fresh memory workload')
             terminal.capture('testing-catalog', ['pt8-memory-workloads'])
             terminal.palette('Simulation: Launch selected catalog subset')
             terminal.capture('form-cases', ['CASES', 'flops256', 'exact256'])

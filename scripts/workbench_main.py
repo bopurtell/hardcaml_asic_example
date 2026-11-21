@@ -679,7 +679,7 @@ def main(argv=None):
         elif args.command == 'prepare':
             args.asic_generation = args.asic_generation or root / '.dev/asic-synthesis-envelope-v1/generations' / GENERATION
             args.sdk_prefix = args.sdk_prefix or root / '.dev/workbench-provider-sdk'
-            args.wb_build_root = args.wb_build_root or root.parent / 'silver/_build_pt8_workbench'
+            args.wb_build_root = args.wb_build_root or root.parent / 'silver/_build_workbench'
             if args.build and (store / 'install.json').exists() and not args.update:
                 raise RuntimeError('use build, or prepare --update --build for an existing installation')
             value = prepare(args, root, store)

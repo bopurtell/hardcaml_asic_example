@@ -30,7 +30,7 @@ class Terminal:
         self.output = output
         self.height, self.width = 46, 150
         self.data = bytearray()
-        spec = importlib.util.spec_from_file_location('pt8_screen', WB / 'scripts/test-fs0.py')
+        spec = importlib.util.spec_from_file_location('pt8_screen', WB / 'scripts/test-native-execution.py')
         emulator = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(emulator)
         self.screen = emulator.terminal_screen
@@ -386,7 +386,7 @@ def main():
                 result['warm_get_filter_reopen_resize_no_exec'] = True
                 # The production UI, rather than HTTP, submits this fresh run.
                 old_attempts = {field(a, 'id') for a in field(rpc('simulation'), 'attempts')}
-                terminal.palette('Workloads: Launch fresh PT.8 workload')
+                terminal.palette('Workloads: Launch fresh memory workload')
                 terminal.capture('ui-testing-catalog', ['pt8-memory-workloads'])
                 terminal.palette('Simulation: Launch selected catalog subset')
                 terminal.capture('ui-form-cases', ['CASES', 'flops256', 'exact256'])

@@ -34,8 +34,16 @@ def main():
                 assert not proc.returncode, proc.stderr
                 return proc.stdout
 
-        def listing():
-            return json.loads(command("dune", "exec", chip, "--", "flow", "list", "--json"))
+        def listing(*selection):
+            return json.loads(command("dune", "exec", chip, "--", "flow", "list", "--json", *selection))
+
+        def entries(declaration):
+            return {e["methodology"]["id"]: e for e in declaration["entries"]}
+
+        def plan(*selection, endpoint="synthesis"):
+            return json.loads(command("dune", "exec", chip, "--", "flow", "plan",
+                                      "--endpoint", endpoint, "--source-root", str(root),
+                                      "--json", *selection))
 
         def render(op, error=None, **fields):
             result = command("hardcaml-asic-starter", "render-" + op, json.dumps({
@@ -51,10 +59,20 @@ def main():
                 out.write(f["contents"])
             return dest
 
-        initial = listing()
+        initial = listing()["declaration"]
+        fifo = ("--chip", "fifo_demo", "--variant", "default")
+        assert initial == listing(*fifo)["declaration"]
+        assert initial["default"] == {"flow": "standard", "profile": "balanced"}
+        other_flows = {id: entry for id, entry in entries(initial).items() if id != "standard"}
         memory = ("dune", "exec", "./asics/program_memory/cli/chip.exe", "--", "flow", "list")
-        assert command(*memory, "--chip", "program_memory", "--json") == command(*memory, "--json")
+        memory_catalog = json.loads(command(*memory, "--json"))
+        assert json.loads(command(*memory, "--chip", "program_memory", "--json")) == memory_catalog
         command(*memory, "--chip", "fifo_demo", "--json", error="Usage:")
+        memory_target = ("--chip", "program_memory", "--variant", "default")
+        assert listing(*memory_target) == memory_catalog
+        assert memory_catalog["declaration"]["default"] == {
+            "flow": "stock256-r0", "profile": "qualification"}
+        memory_plan = plan(*memory_target, endpoint="timing")
         opts = dict(flow_id="standard", source_profile="balanced", profile_id="timing_trial", edits={})
         manual = render("profile", **opts, registered=False)
         assert not manual["files"] and "Flow.Profile.create" in manual["snippet"]
@@ -70,7 +88,7 @@ def main():
         assert "synth_abc_buffering" not in edited["files"][0]["contents"]
         helper = flows / "standard_profiles.ml"
         helper.write_text(helper.read_text().replace("Area_0", "Area_2"))
-        e, = listing()["declaration"]["entries"]
+        e = entries(listing()["declaration"])["standard"]
         assignments = {p["id"]: {a["key"]: a["value"] for a in p["assignments"]} for p in e["profiles"]}
         assert e["default_profile"] == "balanced"
         assert assignments["balanced"]["SYNTH_STRATEGY"] == "AREA 2"
@@ -81,8 +99,15 @@ def main():
         assert new == flows / "flow_quick.ml"
         (flows / "ordinary.ml").write_text("let helper = 1\n")
         catalog = listing()["declaration"]
-        assert catalog["default"] == initial["declaration"]["default"]
-        assert [e["methodology"]["id"] for e in catalog["entries"]] == ["quick", "standard"]
+        assert catalog["default"] == initial["default"]
+        added = entries(catalog)
+        assert set(added) == set(entries(initial)) | {"quick"}
+        assert all(added[id] == entry for id, entry in other_flows.items())
+        assert added["quick"]["default_profile"] == "initial"
+        assert listing(*memory_target) == memory_catalog
+        assert plan(*memory_target, endpoint="timing") == memory_plan
+        command("dune", "exec", chip, "--", "flow", "describe", *memory_target,
+                "--flow", "quick", "--json", error="Unknown flow ID")
         paths = command("dune", "exec", f"./{owner}/verif/bundle/export_trace.exe", "--", "--inputs").splitlines()
         assert {str(p.relative_to(root)) for p in [copy, new, helper]} <= set(paths)
         # Exercise real plan + run dispatch without starting physical tools.
@@ -104,10 +129,12 @@ else:
                                   ("synth_delay", "DELAY 1")]:
             args = ("--flow", "standard", "--profile", profile, "--endpoint", "synthesis",
                     "--source-root", str(root), "--json")
-            plan = json.loads(command("dune", "exec", chip, "--", "flow", "plan", *args))
-            assert json.loads(plan["configuration_bytes"])["SYNTH_STRATEGY"] == strategy
+            prepared = plan(*fifo, "--flow", "standard", "--profile", profile)
+            assert json.loads(prepared["configuration_bytes"])["SYNTH_STRATEGY"] == strategy
+            if profile == "balanced":
+                assert plan() == prepared
             receipt = json.loads(command("dune", "exec", chip, "--", "flow", "run", *args,
-                "--provider", str(recorder), "--expected-plan-identity", plan["plan_identity"]))
+                "--provider", str(recorder), "--expected-plan-identity", prepared["plan_identity"]))
             assert Path(receipt["attempt"]).is_dir()
         assert all((root / p).read_bytes() == data for p, data in before.items())
         duplicate = flows / "flow_other.ml"
@@ -118,13 +145,17 @@ else:
         standard = flows / "flow_standard.ml"
         opted_in = standard.read_text()
         standard.write_text(opted_in.replace("(* hardcaml-asic profile directory v1 *)\n", ""))
-        e, = listing()["declaration"]["entries"]
+        catalog = listing()["declaration"]
+        assert catalog["default"] == initial["default"]
+        assert set(entries(catalog)) == set(entries(initial))
+        e = entries(catalog)["standard"]
         assert [p["id"] for p in e["profiles"]] == ["balanced", "synth_delay"]
         copy.unlink()
         standard.write_text(opted_in)
-        e, = listing()["declaration"]["entries"]
+        e = entries(listing()["declaration"])["standard"]
         assert [p["id"] for p in e["profiles"]] == ["balanced", "synth_delay"]
-        print("PASS FIFO clean build, flow/profile additions and removals, copy isolation, collisions, source inventory")
+        print("PASS FIFO flow/profile additions and removals, per-chip isolation and defaults, "
+              "copy isolation, collisions, source inventory")
 
 
 if __name__ == "__main__":

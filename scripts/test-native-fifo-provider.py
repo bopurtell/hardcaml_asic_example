@@ -34,6 +34,7 @@ def main():
         (['seeded'], '0', 'normal'),
         (['directed', 'seeded'], '65536', 'normal'),
         (['directed', 'seeded'], '18446744073709551615', 'mismatch'),
+        (['export-stress'], '42', 'normal'),
         (['seeded', 'directed'], '18446744073709551615', 'normal'),
     ]
     mismatches = []
@@ -51,8 +52,11 @@ def main():
         installed = json.loads((project / '.dev/fifo-simulation-install.json').read_text())
         # Exercise the installed adjacent-simulator default as well as explicit prefix args.
         commands.append([str(Path(installed['generation']) / 'test_provider.exe')])
+        catalog = subprocess.run(commands[-1] + ['discover', '--protocol-version', '1'],
+                                 check=True, capture_output=True, text=True)
+        assert parse(catalog.stdout) == parse(discovery[1].stdout), 'installed discovery differs'
         for index, (cases, seed, checker) in enumerate(scenarios):
-            parameters = [('checker', checker), ('cycles', '64')]
+            parameters = [('checker', checker), ('cycles', '64'), ('trace_mib', '1')]
             if index == len(scenarios) - 1:
                 # Deliberately exercise non-catalog case and parameter ordering too.
                 parameters.reverse()
@@ -76,6 +80,9 @@ def main():
                 results.append((
                     [parse(line) for line in events.read_text().splitlines()],
                     {p.name: p.read_bytes() for p in artifacts.iterdir()}, result.stdout))
+            if cases == ['export-stress']:
+                for _, artifacts, _ in results:
+                    assert len(artifacts['export-stress.vcd']) == 1024 * 1024
             for component, label in enumerate(('events', 'artifact bytes', 'stdout')):
                 for native in (0, 2):
                     if results[native][component] != results[1][component]:
@@ -86,8 +93,10 @@ def main():
             [('suite', 'unknown')], [('cases', ['directed', 'directed'])],
             [('cases', [])],
             [('seed', '01')], [('seed', '18446744073709551616')],
-            [('parameters', [('cycles', '65'), ('checker', 'normal')])],
-            [('parameters', [('cycles', '64'), ('checker', 'unknown')])],
+            [('parameters', [('cycles', '65'), ('checker', 'normal'), ('trace_mib', '1')])],
+            [('parameters', [('cycles', '64'), ('checker', 'unknown'), ('trace_mib', '1')])],
+            [('cases', ['export-stress']),
+             ('parameters', [('cycles', '64'), ('checker', 'normal'), ('trace_mib', '2')])],
             [('asic_inputs', [[
                 ('run', [('backend', 'test'), ('id', 'test'), ('build', []), ('label', [])]),
                 ('attempt', 'test'), ('artifact_id', 'test'), ('sha256', '0' * 64)]])],

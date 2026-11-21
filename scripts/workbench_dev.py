@@ -446,7 +446,7 @@ def show(manifest, *, stream=sys.stdout):
 def default_inputs(root):
     return dict(asic_generation=str(root / '.dev/asic-pt8-workbench/session-final-review-01/asic/generations/ee3af8de9f83418b9afed9c67e473e3c'),
                 sdk_prefix=str(root / '.dev/workbench-provider-sdk'),
-                wb_build_root=str(root.parent / 'silver/_build_pt8_workbench'),
+                wb_build_root=str(root.parent / 'silver/_build_workbench'),
                 dune=shutil.which('dune'), python=str(Path(sys.executable).resolve()),
                 toolchain=str(root / '_flow_tools'), git_dir=str(root / '.git'),
                 git=shutil.which('git', path=clean_environment(os.environ).get('PATH')))
@@ -495,7 +495,7 @@ def capture_apps_only(args, store, prior, receipt):
     inputs = dict(prior['inputs'])
     if args.wb_build_root is not None:
         inputs['wb_build_root'] = str(args.wb_build_root.resolve(strict=True))
-    with locked('/tmp/opencode/workbench-pt8-build.lock'):
+    with locked('/tmp/opencode/workbench-build.lock'):
         originals = {kind: Path(inputs['wb_build_root']) / relative for kind, relative in
                      (('daemon', 'default/daemon/main.exe'), ('client', 'default/terminal/main.exe'))}
         before = {kind: sha(path) for kind, path in originals.items()}
@@ -584,7 +584,7 @@ def capture(args, store, prior, receipt, migration=None):
     # Record the actual installer that produced these configs, not an old copy.
     copy_checked(Path(__file__), generation / 'setup/workbench_dev.py')
     # A builds under this same lock: capture the pair together, then recheck both.
-    with locked('/tmp/opencode/workbench-pt8-build.lock'):
+    with locked('/tmp/opencode/workbench-build.lock'):
         originals = {kind: Path(inputs['wb_build_root']) / ('default/' + directory + '/main.exe')
                      for kind, directory in (('daemon', 'daemon'), ('client', 'terminal'))}
         before = {kind: sha(path) for kind, path in originals.items()}

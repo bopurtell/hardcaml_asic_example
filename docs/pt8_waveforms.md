@@ -4,8 +4,8 @@
 Strict supported-format validation and failed-inspection waveform suppression are
 fixed; six durable tests pass. Final direct pair, source-only Plan and fresh native
 Testing JSON-cursor→VCD flow pass with final client `2c301d20…`. See
-[final commands, receipts and hashes](../../silver/docs/pt8_waveform_final_acceptance.md) and
-[correction receipt and hashes](../../silver/docs/pt8_waveform_producer_corrections.md).
+[final commands, receipts and hashes](../../silver/docs/archive/workloads-waveforms/waveform_acceptance.md) and
+[correction receipt and hashes](../../silver/docs/archive/workloads-waveforms/waveform_producer_corrections.md).
 Session02 results below are preserved historical acceptance.
 
 The reusable `scripts/pt8_workloads.py` retains historical no-dump behavior by
@@ -46,7 +46,7 @@ opam exec --switch=5.2.0+ox -- python3 -B scripts/pt8_workbench_launch.py daemon
 opam exec --switch=5.2.0+ox -- python3 -B scripts/pt8_workbench_launch.py client --session .dev/asic-pt8-workbench/session-waveforms-final-01
 ```
 
-Use **Workloads: Launch fresh PT.8 workload**, choose a positive Testing case,
+Use **Workloads: Launch fresh memory workload**, choose a positive Testing case,
 keep seed34097 and confirm launch. Select the case, then **Simulation: Open
 embedded waveform CASE implementation interface waveform**. The selected case's
 Artifacts pane also offers `w`/`W` for embedded/dedicated Waveforms views. Use
@@ -65,7 +65,7 @@ Artifacts pane also offers `w`/`W` for embedded/dedicated Waveforms views. Use
   opens the dedicated Waveforms workspace. Uses only its owned private runtime.
 
 Full concrete artifact paths, hashes, commands and failure history are in
-[Workbench producer handoff](../../silver/docs/pt8_waveform_producer_handoff.md).
+[archived Silver producer handoff](../../silver/docs/archive/workloads-waveforms/waveform_producer_handoff.md).
 All simulation is functional Icarus; EDA allocation0. Setup reused the existing
 provider generation and built only the isolated example, switch5.2.0+ox,
 `dune build -j 2 --build-dir _build_pt8_workbench` under the shared example lock.

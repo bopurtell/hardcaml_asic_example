@@ -56,7 +56,7 @@ def verify_result(output, case, reference, copied=None):
     if copied:
         assert copied.read_bytes() == wave.read_bytes()
     times = [n * 10000 + phase for n in range(1307) for phase in (4000, 9000)]
-    probe = WB / '_build_pt8_workbench/default/terminal/waveform_probe.exe'
+    probe = WB / '_build_workbench/default/terminal/waveform_probe.exe'
     parsed = dict(parse(command(output, case + '-same-execution',
         [probe, wave, '2595000', '2595107', *map(str, times)], output)))
     assert parsed['status'] == 'ok'
@@ -161,7 +161,7 @@ def native(session, manifest, output, prior):
             terminal = Terminal([str(build / 'terminal/main.exe'), '--connect', proxy.url,
                                  '--project-root', manifest['project_root']], env, output)
             terminal.capture('startup', ['Connection: connected', 'Testing'])
-            terminal.palette('Workloads: Launch fresh PT.8 workload')
+            terminal.palette('Workloads: Launch fresh memory workload')
             terminal.capture('catalog', ['pt8-memory-workloads'])
             terminal.palette('Simulation: Launch selected catalog subset')
             terminal.capture('form-cases', ['CASES', 'flops256', 'exact256'])

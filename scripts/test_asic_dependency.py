@@ -43,7 +43,8 @@ class CaptureBuildRootsTests(unittest.TestCase):
             (root / 'execution').mkdir()
             (root / 'execution/source.ml').write_text('authored')
             names = ['execution/source.ml']
-            for name in ('_build_pt8_workbench', '_build_pt8_workloads'):
+            private_roots = ('_build_workbench', '_build_pt8_workbench', '_build_pt8_workloads')
+            for name in private_roots:
                 (root / name).mkdir()
                 link = root / name / 'broken-install-link'
                 link.symlink_to('missing')
@@ -52,7 +53,7 @@ class CaptureBuildRootsTests(unittest.TestCase):
                 entries = dep.development(root, root / 'store')
             self.assertEqual(set(entries), {'execution/source.ml'})
             self.assertTrue(all((root / n / 'broken-install-link').is_symlink()
-                                for n in ('_build_pt8_workbench', '_build_pt8_workloads')))
+                                for n in private_roots))
 
 
 class SetupTests(unittest.TestCase):

@@ -12,11 +12,13 @@ ordered-list model. Its checks follow `ip/controlled_fifo/verif/cyclesim/fifo_te
 (except unspecified power-up state), pre-edge acceptance, and post-edge snapshots.
 Existing CLI/Dune tests retain their original single-int PRNG seed behavior.
 
-Catalog: suite `controlled-fifo`; cases `directed`, `seeded`; seed default `42`;
-parameters (both required): `cycles` = `64`, `4096` (default), `20000`;
-`checker` = `normal` (default), `mismatch`. `cycles` controls only seeded traffic;
-directed always runs the complete existing directed generator. Either case can
-be selected alone, or both in requested order. ASIC inputs must be empty.
+Catalog: suite `controlled-fifo`; cases `directed`, `seeded`, `export-stress`;
+seed default `42`; parameters (all required): `cycles` = `64`, `4096` (default),
+`20000`; `checker` = `normal` (default), `mismatch`; `trace_mib` = `1` (default),
+`16`, `64`. `cycles` controls only seeded traffic. The directed case runs the
+complete existing directed generator. `trace_mib` applies only to `export-stress`,
+which streams checked Cyclesim transitions and produces a VCD of the specified
+size. Select one or more cases in the desired order. ASIC inputs must be empty.
 
 FS2 seeds are canonical decimal uint64, including `18446744073709551615`.
 Both adapters split all 64 bits into **four little-endian 16-bit words**, supplied to
@@ -29,8 +31,9 @@ Reports retain the exact decimal seed and the four words.
 17. It never changes the DUT, input sequence, or VCD. The full simulation continues,
 reports the cycle/phase/field/expected/observed/model value, stimulus and recent
 history, and emits semantic Failed while the provider exits zero. Native `.vcd`
-and `.sexp` reports are genuine simulator/checker output. Progress counts include
-initial clear and final drain/underflow, so totals may exceed `cycles`.
+and `.sexp` reports are genuine simulator/checker output. The ordinary cases
+report progress in FIFO edges, including initial clear and final drain/underflow,
+so totals may exceed `cycles`. The export-stress case reports VCD bytes.
 
 Explicit installation (no dependency refresh, ASIC builds, tests, or daemon work):
 
