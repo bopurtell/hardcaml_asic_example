@@ -109,7 +109,7 @@ def direct(session, manifest, output):
     (fs2 / 'artifacts').mkdir()
     attempt = 'final-direct-' + uuid.uuid4().hex
     (fs2 / 'request.sexp').write_text(sexp([('protocol_version', 1), ('attempt_id', attempt), ('selection', [
-        ('suite', 'pt8-memory-workloads'), ('cases', ['flops256', 'exact256']), ('seed', '34097'),
+        ('suite', 'memory-workloads'), ('cases', ['flops256', 'exact256']), ('seed', '34097'),
         ('parameters', []), ('asic_inputs', [])])]) + '\n')
     command(output, 'actual-direct-pair', ['strace', '-f', '-e', 'trace=process', '-o',
         output / 'direct.process.strace', '--', *manifest['provider_command'], 'run', '--protocol-version', '1',
@@ -162,7 +162,7 @@ def native(session, manifest, output, prior):
                                  '--project-root', manifest['project_root']], env, output)
             terminal.capture('startup', ['Connection: connected', 'Testing'])
             terminal.palette('Workloads: Launch fresh memory workload')
-            terminal.capture('catalog', ['pt8-memory-workloads'])
+            terminal.capture('catalog', ['memory-workloads'])
             terminal.palette('Simulation: Launch selected catalog subset')
             terminal.capture('form-cases', ['CASES', 'flops256', 'exact256'])
             terminal.key(b'\x15exact256\r')
@@ -198,8 +198,8 @@ def native(session, manifest, output, prior):
                 terminal.save('focus-failed', screen)
                 raise AssertionError('Artifacts focus not reached')
             terminal.key(b'k' * 8)
-            screen = terminal.capture('json-cursor', ['retained workload result'])
-            assert any('>' in line and 'retained workload result' in line for line in screen.splitlines()), screen
+            screen = terminal.capture('json-cursor', ['workload result'])
+            assert any('>' in line and 'workload result' in line for line in screen.splitlines()), screen
             before = len(proxy.records)
             terminal.key(b'w')
             screen = terminal.capture('mixed-X-ready-at-zero', ['Waveform', 'Cursor 0 ticks', '6 matching',
@@ -285,7 +285,7 @@ def audit_native(session, manifest, output, evidence, prior):
         assert all(s in screen for s in wanted), name
         if name in ('mixed-X-ready-at-zero', 'read-response-2595000', 'dedicated-ready'):
             assert 'Graph unavailable' not in screen and 'result-reference' not in screen
-    assert any('>' in line and 'retained workload result' in line
+    assert any('>' in line and 'workload result' in line
                for line in (evidence / 'json-cursor.txt').read_text().splitlines())
     requests = json.loads((evidence / 'delayed-byte-proxy.json').read_text())['byte_requests']
     assert requests and all(r['request']['artifact_id'] == field(wave, 'id')

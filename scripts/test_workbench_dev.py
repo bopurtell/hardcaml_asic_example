@@ -195,7 +195,7 @@ class Acceptance(unittest.TestCase):
                     self.assertEqual(stable(path.read_bytes()), stable((direct / 'artifacts' / path.name).read_bytes()))
 
     def test_03_pt8_both_actual_result_waveforms(self):
-        directory, argv = self.request('pt8-positive-both', selection('pt8-memory-workloads'))
+        directory, argv = self.request('memory-workloads-both', selection('memory-workloads'))
         _, events = self.execute(directory, argv)
         self.assertEqual(events[-1]['payload'], ['Finished', 'Passed'])
         for case in ('flops256', 'exact256'):
@@ -229,7 +229,7 @@ class Acceptance(unittest.TestCase):
             self.execute(directory, argv, expected=2 if label == 'unknown-suite' else 1)
             self.assertEqual((directory / 'events.sexp').read_bytes(), b'')
             self.assertEqual(list((directory / 'artifacts').iterdir()), [])
-        selected = dict(selection('pt8-memory-workloads'))
+        selected = dict(selection('memory-workloads'))
         selected['seed'] = '42'
         directory, argv = self.request('pt8-wrong-seed', list(selected.items()))
         self.execute(directory, argv, expected=2)
@@ -247,7 +247,7 @@ class Acceptance(unittest.TestCase):
                 router.discover_child([sys.executable, '-c', program], os.environ, timeout=.3)
         bad = dict(self.initial)
         bad['provider_commands'] = dict(self.children)
-        bad['provider_commands']['pt8-memory-workloads'] = [sys.executable, '-c', 'print("(broken")']
+        bad['provider_commands']['memory-workloads'] = [sys.executable, '-c', 'print("(broken")']
         path = self.evidence / 'bad-discovery-manifest.json'
         dev.write(path, bad)
         command = [sys.executable, '-B', str(ROOT / 'integration/workbench/workbench_provider.py'), '--manifest', str(path),
@@ -302,7 +302,7 @@ class Acceptance(unittest.TestCase):
                         children = Path(f'/proc/{process.pid}/task/{process.pid}/children').read_text().split()
                         if children:
                             observed = list(map(int, children))
-                            if suite == 'pt8-memory-workloads':
+                            if suite == 'memory-workloads':
                                 process.send_signal(signal.SIGTERM)  # runner must reap even PID-only signal
                             else:
                                 os.killpg(process.pid, signal.SIGTERM)
@@ -310,7 +310,7 @@ class Acceptance(unittest.TestCase):
                         time.sleep(.001)
                     self.assertTrue(observed, 'no owned native child observed')
                     code = process.wait(timeout=10)
-                    self.assertEqual(code, 130 if suite == 'pt8-memory-workloads' else -signal.SIGTERM)
+                    self.assertEqual(code, 130 if suite == 'memory-workloads' else -signal.SIGTERM)
                 finally:
                     if process.poll() is None:
                         os.killpg(process.pid, signal.SIGKILL)
@@ -371,7 +371,7 @@ class Acceptance(unittest.TestCase):
         self.assertTrue(Path(self.initial['generation']).is_dir())
         self.assertIn(b'deliberate editable', edited.read_bytes())
         # Previously published VCD/JSON and full result closure survive refresh byte-exact.
-        positive = self.evidence / 'pt8-positive-both/artifacts'
+        positive = self.evidence / 'memory-workloads-both/artifacts'
         references = list(positive.glob('*-result-reference.json'))
         self.assertEqual(len(references), 2)
         for reference_file in references:

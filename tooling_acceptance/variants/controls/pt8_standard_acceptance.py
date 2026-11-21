@@ -177,7 +177,7 @@ def main():
         simulation = wait(lambda: (lambda s: s if field(s, 'discovery_digest') else None)(
             http.rpc('Get', domain='simulation')), timeout=30)
         write(output / 'pt8-discovery.json', simulation)
-        assert 'pt8-memory-workloads' in sexp(simulation)
+        assert '(id memory-workloads)' in sexp(simulation)
         result.update(pass_=True, preparation_available=True, physical_fresh_stage_available=True,
             source_build_and_emission_completed=True, pt8_discovery=True,
             fresh_prepared=prepared, standard_profiles=profiles, standard_endpoints=endpoints)

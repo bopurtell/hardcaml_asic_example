@@ -48,7 +48,7 @@ def main():
             terminal = Terminal(launch + ['client'] + common, env, output)
             terminal.capture('startup', ['Connection: connected', 'Overview', 'Testing'])
             terminal.palette('Workloads: Launch fresh memory workload')
-            terminal.capture('testing-catalog', ['pt8-memory-workloads'])
+            terminal.capture('testing-catalog', ['memory-workloads'])
             terminal.palette('Simulation: Launch selected catalog subset')
             terminal.capture('form-cases', ['CASES', 'flops256', 'exact256'])
             terminal.key(b'\x15exact256\r')

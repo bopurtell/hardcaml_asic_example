@@ -5,26 +5,30 @@ let discovery : Wire.Discovery.t =
   { protocol_version = 1
   ; suites =
       [ { id = "controlled-fifo"
-        ; label = "Controlled FIFO / independent list checker"
+        ; label = "Controlled FIFO"
         ; cases =
-            List.map [ "directed"; "seeded"; "export-stress" ] ~f:(fun id : Wire.Case.t ->
-              { id; label = "FIFO " ^ id })
+            List.map
+              [ "directed", "Directed FIFO tests"
+              ; "seeded", "Seeded random FIFO tests"
+              ; "export-stress", "Large waveform export"
+              ]
+              ~f:(fun (id, label) : Wire.Case.t -> { id; label })
         ; parameters =
             [ { key = "checker"
-              ; label = "checker"
+              ; label = "Checker mode"
               ; default = "normal"
               ; choices = [ "normal"; "mismatch" ]
               }
             ; { key = "cycles"
-              ; label = "cycles"
+              ; label = "Random test cycles"
               ; default = "4096"
-               ; choices = [ "64"; "4096"; "20000" ]
-               }
-             ; { key = "trace_mib"
-               ; label = "export-stress VCD size (MiB; other cases ignore)"
-               ; default = "1"
-               ; choices = [ "1"; "16"; "64" ]
-               }
+              ; choices = [ "64"; "4096"; "20000" ]
+              }
+            ; { key = "trace_mib"
+              ; label = "Large waveform size (MiB; export case only)"
+              ; default = "1"
+              ; choices = [ "1"; "16"; "64" ]
+              }
             ]
         ; default_seed = "42"
         }

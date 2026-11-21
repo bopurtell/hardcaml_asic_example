@@ -52,19 +52,19 @@ def prepare_simulation(*, project_root, build_dir, asic_generation, model_root,
     targets = checkout.TARGETS[:3] if installed_package else checkout.TARGETS
     binaries = {name: str(build / 'default' / name) for name in targets}
     fifo = [binaries[checkout.TARGETS[0]], '--simulator', binaries[checkout.TARGETS[1]]]
-    pt8 = [str(python), '-B', str(root / 'integration/workbench/pt8_workbench_provider.py'),
-           '--generation', str(generation), '--producer-root', str(root),
-           '--emitter', binaries[checkout.TARGETS[2]], '--model-root', str(models),
-           '--output-root', str(state / 'workloads')]
+    memory = [str(python), '-B', str(root / 'integration/workbench/pt8_workbench_provider.py'),
+              '--generation', str(generation), '--producer-root', str(root),
+              '--emitter', binaries[checkout.TARGETS[2]], '--model-root', str(models),
+              '--output-root', str(state / 'workloads')]
     command = [str(python), '-B', str(root / 'integration/workbench/checkout_provider.py'),
                '--manifest', str(manifest_path)]
     # Record everything executed or read at run time; no captured executable,
     # copied models, shim dune, or acceptance session is needed.
     suite_targets = {
         'controlled-fifo': fifo[::2],
-        'pt8-memory-workloads': [binaries[checkout.TARGETS[2]],
-                                str(generation / 'bin/hardcaml-asic-flow'),
-                                *[str(models / name) for name in checkout.MODELS]],
+        router.MEMORY_SUITE: [binaries[checkout.TARGETS[2]],
+                             str(generation / 'bin/hardcaml-asic-flow'),
+                             *[str(models / name) for name in checkout.MODELS]],
     }
     manifest = dict(schema_version=1, checkout_layout=checkout.LAYOUT,
                     source_layout=router.SOURCE_LAYOUT, project_root=str(root),
@@ -72,11 +72,11 @@ def prepare_simulation(*, project_root, build_dir, asic_generation, model_root,
                     model_root=str(models), manifest_path=str(manifest_path),
                     targets=binaries, project_executable=binaries.get(checkout.TARGETS[4]),
                     provider_command=command,
-                    provider_commands=dict(zip(router.SUITES, (fifo, pt8))),
+                     provider_commands={'controlled-fifo': fifo, router.MEMORY_SUITE: memory},
                     environment=env,
                     suite_targets=suite_targets,
                     suite_executables={'controlled-fifo': fifo[::2],
-                        'pt8-memory-workloads': suite_targets['pt8-memory-workloads'][:2]},
+                         router.MEMORY_SUITE: suite_targets[router.MEMORY_SUITE][:2]},
                     max_jobs=2, eda_allocation=0)
     before = {suite: checkout.source_inventory(root, suite) for suite in router.SUITES}
     # Catch changes to supplied immutable dependencies during the build too.

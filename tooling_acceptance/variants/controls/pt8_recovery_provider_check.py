@@ -61,14 +61,14 @@ def main():
     try:
         discovered = record(parse(command('discover', provider + ['discover', '--protocol-version', '1'])),
                             ['protocol_version', 'suites'])
-        assert dict(discovered['suites'][0])['id'] == 'pt8-memory-workloads'
+        assert dict(discovered['suites'][0])['id'] == 'memory-workloads'
         transport = output / 'fs2-transport'
         transport.mkdir()
         artifacts = transport / 'artifacts'
         artifacts.mkdir()
         request = transport / 'request.sexp'
         request.write_text(sexp([('protocol_version', 1), ('attempt_id', 'recovery-exact-' + uuid.uuid4().hex),
-            ('selection', [('suite', 'pt8-memory-workloads'), ('cases', ['exact256']), ('seed', '34097'),
+            ('selection', [('suite', 'memory-workloads'), ('cases', ['exact256']), ('seed', '34097'),
                            ('parameters', []), ('asic_inputs', [])])]) + '\n')
         command('run', ['strace', '-f', '-s', '4096', '-e', 'trace=process', '-o', output / 'process.strace',
             '--', *provider, 'run', '--protocol-version', '1', '--request', request,

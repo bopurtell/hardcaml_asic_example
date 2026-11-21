@@ -167,7 +167,7 @@ The immutable `generations/<id>/manifest.json` has:
   bounded authored closure; status reports any `missing_source` entries;
 * `source_migration`: optional receipt path/SHA256 and installed source-entry list;
 * `suite_sources`: per-suite relevant-source inventories checked before run;
-* `provider_commands`: `controlled-fifo` and `pt8-memory-workloads` argv prefixes;
+* `provider_commands`: `controlled-fifo` and `memory-workloads` argv prefixes;
 * `provider_command`: composite argv prefix;
 * `apps`: captured `daemon` and `client` paths and SHA256;
 * `config_files`: exact filename→SHA256 map for all three installed regular configs;
@@ -208,7 +208,7 @@ source capture, then execs the selected child with the original FS2 arguments.
   64/4096/20000; canonical uint64 seed, default42.
 * PT8: captured Python provider with exact `--generation`, `--producer-root`
   (fixed editable project), `--emitter`, `--model-root`.
-  Suite `pt8-memory-workloads`; flops256/exact256; seed34097 only; no parameters.
+  Suite `memory-workloads`; flops256/exact256; seed34097 only; no parameters.
 
 No request/events/artifact path or attempt/case/artifact ID rewriting; no new
 process group. Stale relevant sources reject before child execution/events with
@@ -417,7 +417,7 @@ Final real `status` excerpt (repeat prepare selected the same generation):
   "prepared": true,
   "editable_project": "/home/wayne/devel/jane/hardcaml_asic_example/.dev/workbench-development/project",
   "generation": "/home/wayne/devel/jane/hardcaml_asic_example/.dev/workbench-development/generations/26f0d5e474bc4d45b5fc5859325c162d",
-  "source_drift": {"controlled-fifo": [], "pt8-memory-workloads": []},
+  "source_drift": {"controlled-fifo": [], "memory-workloads": []},
   "missing_source": []
 }
 ```

@@ -292,7 +292,7 @@ def main():
                 assert time.monotonic() < deadline
                 time.sleep(.05)
                 discovery = rpc('simulation')
-            selection = [['suite', 'pt8-memory-workloads'], ['cases', ['flops256', 'exact256']],
+            selection = [['suite', 'memory-workloads'], ['cases', ['flops256', 'exact256']],
                 ['seed', '34097'], ['parameters', []], ['asic_inputs', []]]
             launched = rpc('simulation', ['Launch', ['submission_key', 'native-' + uuid.uuid4().hex],
                 ['discovery_digest', field(discovery, 'discovery_digest')[0]], ['selection', selection]])
@@ -387,7 +387,7 @@ def main():
                 # The production UI, rather than HTTP, submits this fresh run.
                 old_attempts = {field(a, 'id') for a in field(rpc('simulation'), 'attempts')}
                 terminal.palette('Workloads: Launch fresh memory workload')
-                terminal.capture('ui-testing-catalog', ['pt8-memory-workloads'])
+                terminal.capture('ui-testing-catalog', ['memory-workloads'])
                 terminal.palette('Simulation: Launch selected catalog subset')
                 terminal.capture('ui-form-cases', ['CASES', 'flops256', 'exact256'])
                 terminal.key(b'\x15exact256')
@@ -411,7 +411,7 @@ def main():
                 result.update(actual_ui_fs2_attempt=ui_attempt, actual_ui_case='exact256', ui_form_launch_passed=True)
                 write(output / 'ui-completed-attempt.json', ui_detail)
                 assert field(field(ui_detail, 'captured'), 'selection') == [
-                    ['suite', 'pt8-memory-workloads'], ['cases', ['exact256']], ['seed', '34097'],
+                    ['suite', 'memory-workloads'], ['cases', ['exact256']], ['seed', '34097'],
                     ['parameters', []], ['asic_inputs', []]]
                 terminal.capture('ui-fresh-finished', ['exact256', 'Passed'])
                 terminal.palette('Simulation: Select case exact256')

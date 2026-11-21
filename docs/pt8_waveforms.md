@@ -48,7 +48,7 @@ opam exec --switch=5.2.0+ox -- python3 -B scripts/pt8_workbench_launch.py client
 
 Use **Workloads: Launch fresh memory workload**, choose a positive Testing case,
 keep seed34097 and confirm launch. Select the case, then **Simulation: Open
-embedded waveform CASE implementation interface waveform**. The selected case's
+embedded waveform CASE memory interface waveform**. The selected case's
 Artifacts pane also offers `w`/`W` for embedded/dedicated Waveforms views. Use
 **Inspect workload result** separately for JSON evidence.
 

@@ -11,6 +11,7 @@ spec = importlib.util.spec_from_file_location(
     'configure_simulation', Path(__file__).with_name('configure-simulation.py'))
 setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)
+validate_manifest = setup.validate_manifest
 
 
 class ConfigureSimulation(unittest.TestCase):
@@ -48,10 +49,20 @@ class ConfigureSimulation(unittest.TestCase):
         self.manifest.write_text(json.dumps(value))
         return value
 
-    def test_refresh_preserves_companion_and_selected_runtime(self):
+    def test_refresh_migrates_old_catalog_preserving_companion_and_selected_runtime(self):
         original = self.config.read_bytes()
-        self.write_manifest(installed=True)
+        prior = self.write_manifest(installed=True)
+        prior.update(checkout_layout='checkout-v1', source_layout='ownership-v1')
+        for key in ('suite_sources', 'suite_targets', 'suite_executables', 'target_hashes',
+                    'provider_commands'):
+            prior[key] = {'controlled-fifo': {}, 'pt8-memory-workloads': {}}
+        self.manifest.write_text(json.dumps(prior))
+        self.mocks['validate_manifest'].side_effect = validate_manifest
+        with self.assertRaisesRegex(ValueError, r'suite catalog has changed;.*--refresh'):
+            setup.main([])
+        self.build.assert_not_called()
         setup.main(['--refresh'])
+        self.mocks['validate_manifest'].assert_called_once_with(prior, 'discover')
         kwargs = self.build.call_args.kwargs
         self.assertEqual(kwargs['python'], self.interpreter)
         self.assertEqual(kwargs['asic_generation'], Path('/selected-generation'))

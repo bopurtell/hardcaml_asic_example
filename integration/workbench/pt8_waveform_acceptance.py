@@ -54,7 +54,7 @@ def main():
         d.mkdir()
         (d / 'artifacts').mkdir()
         (d / 'request.sexp').write_text(sexp([('protocol_version', 1), ('attempt_id', label),
-            ('selection', [('suite', 'pt8-memory-workloads'), ('cases', cases), ('seed', '34097'),
+            ('selection', [('suite', 'memory-workloads'), ('cases', cases), ('seed', '34097'),
                            ('parameters', []), ('asic_inputs', [])])]) + '\n')
         return d, prefix + ['run', '--protocol-version', '1', '--request', str(d / 'request.sexp'),
             '--events', str(d / 'events.sexp'), '--artifact-dir', str(d / 'artifacts')]

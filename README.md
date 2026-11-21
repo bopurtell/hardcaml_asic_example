@@ -28,11 +28,15 @@ silver-simulation-setup check --root "$PWD"  # lists 2 suites / 5 cases
 silver --standalone
 ```
 
-Reopen Silver after setup. The suite catalog loads in the background. In
+Reopen Silver after setup. The suite catalog loads **Controlled FIFO** (`controlled-fifo`)
+and **Memory workloads** (`memory-workloads`) in the background. In
 Testing, focus Catalog, choose a suite and cases, and press Enter to open the
 launch form. Press `d` to refresh or retry discovery. After the
 run passes, select its VCD in Artifacts (`w` to view, `e` to export).
-After changing simulation sources, run `python3 -B scripts/configure-simulation.py --refresh`.
+After changing simulation sources or upgrading a checkout from the old
+`pt8-memory-workloads` suite ID, run `python3 -B scripts/configure-simulation.py --refresh`.
+This rebuilds the manifest in place and leaves the existing companion and
+saved runs unchanged. Launch new memory tests from `memory-workloads`.
 The companion and manifest are machine-local and ignored by Git: a fresh clone
 or a cleanup of ignored files requires setup again. Silver history is separate.
 If Silver was already open when the project was configured for the first time,

@@ -26,7 +26,7 @@ SOURCE_PATHS = {
     suite: tuple(dict.fromkeys((*router.SUITE_PATHS[suite], *SUPPORT)))
     for suite in router.SUITES
 }
-SOURCE_PATHS['pt8-memory-workloads'] += (
+SOURCE_PATHS[router.MEMORY_SUITE] += (
     'asics/fifo_demo/project', 'asics/fifo_demo/flows', 'tooling_acceptance/variants/controls/pt8_acceptance.py',
 )
 
@@ -81,7 +81,7 @@ def target_inventory(manifest, suite):
             raise ValueError('missing/nonregular target: ' + name)
         result[name] = router.sha(path)
     # The emitter/inspector depend on the persistent installed ASIC library too.
-    if suite == 'pt8-memory-workloads':
+    if suite == router.MEMORY_SUITE:
         root = Path(manifest['asic_generation'])
         result.update({str(root / name): digest for name, digest in
                        router.inventory(root, (library_path(manifest),)).items()})
@@ -113,7 +113,11 @@ def validate_manifest(manifest, operation):
     prepare = refresh_command(manifest)
     if manifest.get('checkout_layout') != LAYOUT or manifest.get('source_layout') != router.SOURCE_LAYOUT:
         raise ValueError('checkout simulation manifest unavailable; run ' + prepare)
-    for key in ('suite_sources', 'suite_targets', 'suite_executables', 'target_hashes', 'provider_commands'):
+    suite_maps = ('suite_sources', 'suite_targets', 'suite_executables', 'target_hashes', 'provider_commands')
+    old_suites = {'controlled-fifo', 'pt8-memory-workloads'}
+    if all(set(manifest.get(key, {})) == old_suites for key in suite_maps):
+        raise ValueError('checkout simulation suite catalog has changed; run ' + prepare)
+    for key in suite_maps:
         if set(manifest.get(key, {})) != set(router.SUITES):
             raise ValueError('invalid checkout simulation manifest; run ' + prepare)
     if operation == 'discover':

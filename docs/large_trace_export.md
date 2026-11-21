@@ -36,10 +36,11 @@ selection. For future simulation source edits, stop the server and explicitly ru
 
 1. Open Testing via the `Space c c` command palette. Focus Catalog and press `d`
    to refresh discovery; review and accept changed defaults with `u` if requested.
-2. Choose **Controlled FIFO / independent list checker** (`n`/`p`). With `j`/`k`
-   and `x`, select only `export-stress`; inspect the subset in the launch form.
-3. Press Enter, set `trace_mib` to `64`, leave `checker=normal` and `seed=42`, and
-   submit. The ordinary `cycles` value does not affect this case.
+2. Choose **Controlled FIFO** (`n`/`p`). With `j`/`k`
+   and `x`, select only **Large waveform export** (`export-stress`).
+3. Press Enter, set **Large waveform size** (`trace_mib`) to `64`, leave
+   `checker=normal` and `seed=42`, and submit. Random test cycles do not affect
+   this case.
 4. Wait for Passed. In Artifacts select `export-stress.vcd`.
 5. Press **`e`** for export only. **F8** shows the completed path; **F9** recopies
    it to the clipboard. Record elapsed time and the artifact digest from Detail.

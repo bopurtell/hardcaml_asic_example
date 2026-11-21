@@ -11,18 +11,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'integration/workbe
 from wire import Events, parse, record, sexp
 
 SUITE = 'controlled-fifo'
-CASES = ('directed', 'seeded', 'export-stress')
+CASES = {'directed': 'Directed FIFO tests',
+         'seeded': 'Seeded random FIFO tests',
+         'export-stress': 'Large waveform export'}
 PARAMETERS = {'cycles': ('4096', ['64', '4096', '20000']),
               'checker': ('normal', ['normal', 'mismatch']),
               'trace_mib': ('1', ['1', '16', '64'])}
+PARAMETER_LABELS = {'cycles': 'Random test cycles',
+                    'checker': 'Checker mode',
+                    'trace_mib': 'Large waveform size (MiB; export case only)'}
 
 
 def catalog():
     return [('protocol_version', 1), ('suites', [[
-        ('id', SUITE), ('label', 'Controlled FIFO / independent list checker'),
-        ('cases', [[('id', case), ('label', 'FIFO ' + case)] for case in CASES]),
+        ('id', SUITE), ('label', 'Controlled FIFO'),
+        ('cases', [[('id', case), ('label', label)] for case, label in CASES.items()]),
         ('parameters', [[('key', k),
-                         ('label', 'export-stress VCD size (MiB; other cases ignore)' if k == 'trace_mib' else k),
+                         ('label', PARAMETER_LABELS[k]),
                          ('default', default), ('choices', choices)]
                         for k, (default, choices) in sorted(PARAMETERS.items())]),
         ('default_seed', '42')]])]

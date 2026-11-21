@@ -40,9 +40,9 @@ def main():
     discovered = record(parse(command('discover', provider + ['discover', '--protocol-version', '1'])), ['protocol_version', 'suites'])
     assert discovered['protocol_version'] == '1' and len(discovered['suites']) == 1
     suite = dict(discovered['suites'][0])
-    assert suite['id'] == 'pt8-memory-workloads' and suite['default_seed'] == '34097'
+    assert suite['id'] == 'memory-workloads' and suite['default_seed'] == '34097'
     assert [dict(c)['id'] for c in suite['cases']] == ['flops256', 'exact256']
-    selection = [('suite', 'pt8-memory-workloads'), ('cases', ['flops256', 'exact256']),
+    selection = [('suite', 'memory-workloads'), ('cases', ['flops256', 'exact256']),
                  ('seed', '34097'), ('parameters', []), ('asic_inputs', [])]
     def request(label, changes=(), prefix=provider):
         directory = output / label

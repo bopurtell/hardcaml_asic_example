@@ -16,7 +16,8 @@ from wire import parse, record, sexp
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 from workbench_git import clean_environment
 
-SUITES = ('controlled-fifo', 'pt8-memory-workloads')
+MEMORY_SUITE = 'memory-workloads'
+SUITES = ('controlled-fifo', MEMORY_SUITE)
 LIMIT = 1024 * 1024
 SOURCE_LAYOUT = 'ownership-v1'
 SOURCE_DIRS = ('ip/controlled_fifo', 'asics/fifo_demo', 'asics/program_memory', 'asics/sram_budget',
@@ -31,12 +32,11 @@ SUITE_PATHS = {
         'ip/controlled_fifo/verif/simulation', 'ip/controlled_fifo/verif/support',
         'integration/workbench/wire.py', 'integration/workbench/workbench_provider.py',
         'scripts/workbench_git.py'),
-    'pt8-memory-workloads': ('dune-project', 'tooling_acceptance/variants', 'tooling_acceptance/workloads',
-        'integration/workbench/wire.py', 'integration/workbench/workbench_provider.py',
-        'integration/workbench/pt8_workbench_provider.py', 'integration/workbench/pt8_workbench_runner.py',
-        'integration/workbench/workbench_paths.py'),
+    MEMORY_SUITE: ('dune-project', 'tooling_acceptance/variants', 'tooling_acceptance/workloads',
+         'integration/workbench/wire.py', 'integration/workbench/workbench_provider.py',
+         'integration/workbench/pt8_workbench_provider.py', 'integration/workbench/pt8_workbench_runner.py',
+         'integration/workbench/workbench_paths.py', 'scripts/workbench_git.py'),
 }
-SUITE_PATHS['pt8-memory-workloads'] += ('scripts/workbench_git.py',)
 
 
 def sha(path):
@@ -72,7 +72,9 @@ def inventory(root, names):
 def source_drift(manifest, suite):
     if manifest.get('source_layout') != SOURCE_LAYOUT:
         return ['legacy source layout; explicitly create a new --store for the migrated ownership layout']
-    expected = manifest['suite_sources'][suite]
+    expected = manifest.get('suite_sources', {}).get(suite)
+    if expected is None:
+        return ['suite inventory unavailable; run scripts/workbench_dev.py prepare --refresh']
     try:
         actual = inventory(manifest['project_root'], SUITE_PATHS[suite])
     except (OSError, ValueError) as error:
@@ -191,6 +193,9 @@ def main(argv=None, *, manifest_check=None, drift_check=source_drift,
     if manifest.get('source_layout') != SOURCE_LAYOUT:
         raise ValueError('legacy source layout; explicitly create a new --store for the migrated ownership layout; '
                          'existing copies/history remain unchanged')
+    if set(manifest.get('provider_commands', {})) != set(SUITES):
+        guidance = stale_guidance(manifest) if callable(stale_guidance) else stale_guidance
+        raise ValueError('simulation suite catalog has changed; ' + guidance)
     env = environment_factory(manifest)
     if args.operation == 'discover':
         suites = []

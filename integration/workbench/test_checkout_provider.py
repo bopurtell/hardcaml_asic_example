@@ -18,8 +18,9 @@ from wire import parse, record, sexp
 
 ROOT = Path(__file__).resolve().parents[2]
 FIFO_CATALOG = [('protocol_version', 1), ('suites', [[
-    ('id', 'controlled-fifo'), ('label', 'Controlled FIFO / independent list checker'),
-    ('cases', [[('id', case), ('label', 'FIFO ' + case)] for case in ('directed', 'seeded')]),
+    ('id', 'controlled-fifo'), ('label', 'Controlled FIFO'),
+    ('cases', [[('id', 'directed'), ('label', 'Directed FIFO tests')],
+               [('id', 'seeded'), ('label', 'Seeded random FIFO tests')]]),
     ('parameters', []), ('default_seed', 42)]])]
 
 
@@ -128,16 +129,19 @@ class CheckoutProvider(unittest.TestCase):
         self.assertEqual(manifest['project_root'], str(self.root))
         self.assertEqual(self.manifest_path, self.root / '.dev/workbench-main/simulation/manifest.json')
         self.assertEqual(json.loads(self.manifest_path.read_text()), manifest)
-        self.assertIn('--output-root', manifest['provider_commands']['pt8-memory-workloads'])
+        self.assertIn('--output-root', manifest['provider_commands']['memory-workloads'])
         self.assertNotIn('/tmp', json.dumps(manifest))
         result = self.invoke('discover', '--protocol-version', '1')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, '')
         suites = record(parse(result.stdout), ('protocol_version', 'suites'))['suites']
         fields = [dict(suite) for suite in suites]
-        self.assertEqual([suite['id'] for suite in fields], list(router.SUITES))
+        self.assertEqual([suite['id'] for suite in fields], ['controlled-fifo', 'memory-workloads'])
         self.assertEqual([[dict(case)['id'] for case in suite['cases']] for suite in fields],
                          [['directed', 'seeded'], ['flops256', 'exact256']])
+        self.assertEqual([suite['label'] for suite in fields], ['Controlled FIFO', 'Memory workloads'])
+        self.assertEqual([dict(case)['label'] for case in fields[1]['cases']],
+                         ['256-word flip-flop memory', '256-word SRAM macro'])
         for suite in router.SUITES:
             self.assertEqual(checkout.drift(manifest, suite), [])
 
@@ -243,7 +247,7 @@ class CheckoutProvider(unittest.TestCase):
         state = self.directory / 'launcher-state/simulation'
         manifest = prepare_simulation(**dict(self.options, simulation_dir=state))
         self.assertEqual(manifest['manifest_path'], str(state / 'manifest.json'))
-        command = manifest['provider_commands']['pt8-memory-workloads']
+        command = manifest['provider_commands']['memory-workloads']
         self.assertEqual(command[command.index('--output-root') + 1], str(state / 'workloads'))
         self.assertEqual(checkout.PREPARE, 'python3 -B scripts/silver.py build')
 
@@ -259,6 +263,37 @@ class CheckoutProvider(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn(checkout.REFRESH, result.stderr)
             self.assertNotIn(checkout.PREPARE, result.stderr)
+
+    def test_explicit_rebuild_replaces_old_suite_id(self):
+        self.options['installed_package'] = True
+        (self.generation / 'lib/hardcaml_asic').mkdir()
+        manifest = self.prepare()
+        suite_maps = ('suite_sources', 'suite_targets', 'suite_executables', 'target_hashes',
+                      'provider_commands')
+        old_suite = 'pt8-memory-workloads'
+        for key in suite_maps:
+            manifest[key][old_suite] = manifest[key].pop('memory-workloads')
+        self.manifest_path.write_text(json.dumps(manifest))
+
+        request = self.request(suite=old_suite)
+        for args in (('discover', '--protocol-version', '1'), self.run_args(request)):
+            result = self.invoke(*args)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stdout, '')
+            self.assertIn('suite catalog has changed', result.stderr)
+            self.assertIn(checkout.REFRESH, result.stderr)
+        self.assertEqual(len(self.calls), 1)
+
+        manifest = self.prepare()
+        for key in suite_maps:
+            self.assertEqual(set(manifest[key]), {'controlled-fifo', 'memory-workloads'})
+        result = self.invoke('discover', '--protocol-version', '1')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([dict(suite)['id'] for suite in dict(parse(result.stdout))['suites']],
+                         ['controlled-fifo', 'memory-workloads'])
+        result = self.invoke(*self.run_args(request))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('unknown suite', result.stderr)
 
     def test_reject_source_add_edit_delete_and_target_drift(self):
         self.prepare()
@@ -294,7 +329,7 @@ class CheckoutProvider(unittest.TestCase):
         for path in paths:
             original = path.read_bytes()
             path.write_bytes(original + b'changed\n')
-            self.assertTrue(checkout.drift(self.manifest, 'pt8-memory-workloads'), str(path))
+            self.assertTrue(checkout.drift(self.manifest, 'memory-workloads'), str(path))
             self.assertEqual(checkout.drift(self.manifest, 'controlled-fifo'), [], str(path))
             path.write_bytes(original)
 
@@ -381,7 +416,7 @@ class CheckoutProvider(unittest.TestCase):
                 'time.sleep(30)\n')
         self.options['run'] = build_waiting_emitter
         self.prepare()
-        request = self.request('cancel-pt8', 'pt8-memory-workloads')
+        request = self.request('cancel-memory-workload', 'memory-workloads')
         child = subprocess.Popen(self.manifest['provider_command'] + self.run_args(request),
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reusable positive-only PT8 producer. No builds, no detached children, no EDA."""
+"""Run the memory workload simulations without building or detaching children."""
 import json
 import os
 from pathlib import Path
@@ -55,7 +55,7 @@ class Runner:
         started = time.monotonic()
         cwd = kwargs.get('cwd', ROOT)
         code = None
-        print('PT8 ' + label + ': ' + ' '.join(argv), flush=True)
+        print('Memory workloads / ' + label + ': ' + ' '.join(argv), flush=True)
         try:
             with (directory / 'stdout.log').open('xb') as out, (directory / 'stderr.log').open('xb') as err:
                 self.child = subprocess.Popen(argv, cwd=cwd, env=env, stdout=out, stderr=err)
@@ -76,7 +76,7 @@ class Runner:
 
     def run(self, case, seed, attempt):
         if case not in CASES or seed != SEED:
-            raise ValueError('only flops256/exact256 and fixed declarative seed 34097 are supported')
+            raise ValueError('choose flops256 or exact256 and use seed 34097 for the fixed test sequence')
         root = self.output_root
         root.mkdir(parents=True, exist_ok=True)
         output = root / (case + '-' + uuid.uuid4().hex)

@@ -19,9 +19,9 @@ attempts below remain as evidence; the final acceptance section supersedes them.
 The latest extension also automatically recaptures the fresh Exact result as B
 and compares it with original sim04 Flops A: seven comparable zero deltas.
 
-Frozen FS2v1 interface, 2026-11-05:
+FS2v1 interface (historical captures below retain their original suite ID):
 
-- Suite: `pt8-memory-workloads`.
+- Suite: `memory-workloads` (Memory workloads).
 - Cases: `flops256`, `exact256` (either or both, sequential).
 - Seed: decimal `34097` (`0x8531`) only. This is a declarative identity of
   the existing fixed directed stimulus, **not** a parametric random generator.

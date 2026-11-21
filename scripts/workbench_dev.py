@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'integration/workbench'))
 from wire import parse, record, sexp
 import config_location
-from workbench_provider import (ACCEPTANCE_FILES, SOURCE_DIRS, SOURCE_FILES, SOURCE_LAYOUT, SUITE_PATHS, SUITES,
+from workbench_provider import (ACCEPTANCE_FILES, MEMORY_SUITE, SOURCE_DIRS, SOURCE_FILES, SOURCE_LAYOUT, SUITE_PATHS, SUITES,
                                 environment, inventory, sha, source_drift)
 from workbench_git import clean_environment
 
@@ -642,7 +642,7 @@ def capture(args, store, prior, receipt, migration=None):
     python = inputs['python']
     commands = {
         'controlled-fifo': [str(generation / 'provider/test_provider.exe'), '--simulator', str(generation / 'provider/fifo_sim.exe')],
-        'pt8-memory-workloads': [python, '-B', str(generation / 'provider/integration/workbench/pt8_workbench_provider.py'),
+        MEMORY_SUITE: [python, '-B', str(generation / 'provider/integration/workbench/pt8_workbench_provider.py'),
             '--generation', str(asic), '--producer-root', str(store / 'project'),
             '--emitter', str(generation / 'provider/workload_emit.exe'), '--model-root', str(models)],
     }
