@@ -1,0 +1,11 @@
+; hardcaml-asic flow collection v1
+(rule
+ (target generated.ml)
+ (deps (source_tree .))
+ (action (with-stdout-to %{target}
+   (run %{bin:hardcaml-asic-starter} generate-collection asics/fifo_demo/flows %{deps}))))
+
+(library
+ (name fifo_flows)
+ (libraries core hardcaml_asic)
+ (preprocess (pps ppx_jane)))

@@ -15,6 +15,12 @@ dune build --build-dir _build_migration_hw -j6 \
   asics/program_memory/verif/memory_test.exe
 ```
 
+For standalone catalog discovery, run
+`dune exec asics/program_memory/cli/chip.exe -- flow list --chip program_memory --json`.
+This executable rejects other chip IDs. Program memory's `stock256-r0` flow
+uses a hand-written catalog; Duplicate Profile previews a declaration snippet
+to register manually and does not change `project/program_memory.ml`.
+
 The dated acceptance narrative below preserves historical commands and provider
 identities. For current commands, translate `memory/memory_cli.exe` to
 `asics/program_memory/cli/chip.exe`, `memory/test/memory_test.exe` to

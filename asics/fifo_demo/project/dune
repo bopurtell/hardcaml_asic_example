@@ -3,5 +3,5 @@
 
 (library
  (name fifo_asic)
- (libraries core hardcaml hardcaml_asic controlled_fifo)
+ (libraries core hardcaml hardcaml_asic controlled_fifo fifo_flows)
  (preprocess (pps ppx_jane)))

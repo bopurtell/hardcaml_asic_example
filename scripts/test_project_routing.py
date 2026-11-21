@@ -309,7 +309,7 @@ else:
             manifest = json.loads(p['bundle_manifest'])
             # Every declaration file comes from the Project inventory used by export_trace.
             for name in ('asics/fifo_demo/project/flow_catalog.ml', 'asics/fifo_demo/project/flow_catalog.mli',
-                         'asics/fifo_demo/project/flow_profiles.ml', 'asics/fifo_demo/project/flow_profiles.mli'):
+                         'asics/fifo_demo/flows/standard_profiles.ml', 'asics/fifo_demo/flows/flow_standard.ml'):
                 self.assertIn(name, json.dumps(manifest))
         self.assertFalse((self.root / '_flow_results').exists())
         self.assertFalse(self.log.exists())
@@ -355,7 +355,7 @@ else:
             self.named_run(plan, *args, status=1)
         self.invoke('flow', 'run', '--endpoint', 'floorplan', '--expected-plan-identity',
                     plan['plan_identity'], status=1)
-        for name in ('README.md', 'asics/fifo_demo/project/flow_profiles.ml', 'asics/fifo_demo/project/flow_catalog.ml'):
+        for name in ('README.md', 'asics/fifo_demo/flows/standard_profiles.ml', 'asics/fifo_demo/project/flow_catalog.ml'):
             path = self.root / name
             before = path.read_bytes()
             path.write_bytes(before + b'\n(* source changed *)\n')

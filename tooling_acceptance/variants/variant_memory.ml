@@ -79,8 +79,7 @@ let source_inputs =
   ; "tooling_acceptance/variants/variant_memory.ml"
   ; "tooling_acceptance/variants/variant_cli.ml"
   ; "tooling_acceptance/variants/README.md"
-  ; "asics/fifo_demo/project/flow_profiles.ml"
-  ; "asics/fifo_demo/project/flow_catalog.ml" ]
+  ] @ Flow_catalog.source_inputs
 ;;
 
 let project ?(core_ports = false) ?(ignore_depth = false) checked requirement =

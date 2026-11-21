@@ -2,7 +2,7 @@ open! Core
 open Hardcaml_asic
 
 let usage =
-   "Program memory chip target\nUsage: chip describe --json | flow list --json\n\
+   "Program memory chip target\nUsage: chip describe --json | flow list [--chip program_memory] --json\n\
     \       chip (check|emit|prepare|preview|resources) --selection (flops|exact|fallback) --operation (synthesis|hardening)\n\
     \       prepare requires --source-root ROOT --results-root STORE; optional --json\n\
     \       resources is nonpublishing; optional --simulation; --depth 128|256 (default 256)\n\
@@ -20,7 +20,9 @@ let main () =
     print_endline (Yojson.Safe.to_string (`Assoc
       [ "project_name", `String (Chip_target.name project)
       ; "declaration_sexp", `String (Sexp.to_string_hum (Chip_target.describe project)) ]))
-  | [ "flow"; "list"; "--json" ] ->
+  | [ "flow"; "list"; "--json" ]
+  | [ "flow"; "list"; "--chip"; "program_memory"; "--json" ]
+  | [ "flow"; "list"; "--json"; "--chip"; "program_memory" ] ->
     print_endline (Yojson.Safe.to_string (Flow_spec.list_to_yojson (Program_memory.catalog ())))
   | command :: rest when List.mem [ "check"; "emit"; "prepare"; "preview"; "resources" ] command ~equal:String.equal ->
     let rec parse acc = function

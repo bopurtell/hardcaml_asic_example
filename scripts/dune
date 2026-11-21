@@ -5,7 +5,7 @@
        (env_var HARDCAML_ASIC_PREPARATION_SOURCE_ROOT)
        (source_tree ../asics/program_memory/project) (source_tree ../asics/program_memory/cli) ../asics/program_memory/README.md
        (source_tree ../ip/controlled_fifo/rtl)
-       (source_tree ../asics/fifo_demo/project) (source_tree ../asics/fifo_demo/rtl)
+       (source_tree ../asics/fifo_demo/project) (source_tree ../asics/fifo_demo/flows) (source_tree ../asics/fifo_demo/rtl)
        ../dune-project ../asic-dependency.json ../README.md
        ../asics/fifo_demo/cli/dune ../asics/fifo_demo/cli/chip.ml)
  (action
@@ -53,7 +53,7 @@
  (alias runtest)
  (deps test_project_routing.py (env_var HARDCAML_ASIC_TEST_PROVIDER)
        (env_var HARDCAML_ASIC_TEST_EVIDENCE) (source_tree ../ip/controlled_fifo/rtl)
-       (source_tree ../asics/fifo_demo/project) (source_tree ../asics/fifo_demo/rtl)
+       (source_tree ../asics/fifo_demo/project) (source_tree ../asics/fifo_demo/flows) (source_tree ../asics/fifo_demo/rtl)
        ../dune-project ../asic-dependency.json ../README.md
        ../asics/fifo_demo/cli/dune ../asics/fifo_demo/cli/chip.ml)
  (action (run python3 %{dep:test_project_routing.py} %{exe:../asics/fifo_demo/cli/chip.exe}
@@ -64,7 +64,7 @@
   (deps headless_flow.py test_headless_flow.py test_project_routing.py
         (env_var HARDCAML_ASIC_TEST_PROVIDER) (env_var HARDCAML_ASIC_ENGINE_FIXTURES)
         (source_tree ../ip/controlled_fifo/rtl) (source_tree ../asics/fifo_demo/project)
-        (source_tree ../asics/fifo_demo/rtl)
+        (source_tree ../asics/fifo_demo/flows) (source_tree ../asics/fifo_demo/rtl)
        ../dune-project ../asic-dependency.json ../README.md
        ../asics/fifo_demo/cli/dune ../asics/fifo_demo/cli/chip.ml)
  (action (run python3 -B %{dep:test_headless_flow.py} %{exe:../asics/fifo_demo/cli/chip.exe}
@@ -74,7 +74,7 @@
  (alias runtest)
  (deps ../asic-dependency.json ../dune-project ../README.md
        (source_tree ../ip/controlled_fifo/rtl)
-       (source_tree ../asics/fifo_demo/cli) (source_tree ../asics/fifo_demo/project)
+       (source_tree ../asics/fifo_demo/cli) (source_tree ../asics/fifo_demo/project) (source_tree ../asics/fifo_demo/flows)
        (source_tree ../asics/fifo_demo/rtl) (source_tree ../asics/program_memory/project) (source_tree ../asics/program_memory/cli)
        ../asics/program_memory/README.md ../asics/sram_budget/dune ../asics/sram_budget/sram_budget.ml)
  (action (run python3 -B %{dep:test_chip_routing.py} %{exe:../asics/fifo_demo/cli/chip.exe} %{workspace_root})))

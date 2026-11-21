@@ -35,7 +35,7 @@ distinguish them without trusting the declaration.
 Resource requirement is a separate argument: explicit Flops, or Exact (only the
 stock 256x16 macro is supported). There is no fallback. Existing
 `asics/fifo_demo/project/flow_catalog.ml` and
-`asics/fifo_demo/project/flow_profiles.ml` supply backend settings; profile
+`asics/fifo_demo/flows/standard_profiles.ml` supply backend settings; profile
 changes do not add hardware parameters or create another launcher system.
 
 The explicitly named ignored-depth negative consumes a valid checked assignment

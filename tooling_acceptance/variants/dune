@@ -1,11 +1,10 @@
-(copy_files ../../asics/fifo_demo/project/flow_profiles.ml)
 (copy_files ../../asics/fifo_demo/project/flow_catalog.ml)
 
 (library
  (name pt8_adapter)
  (wrapped false)
- (modules variant_memory flow_profiles flow_catalog)
- (libraries core hardcaml hardcaml_asic)
+ (modules variant_memory flow_catalog)
+ (libraries core hardcaml hardcaml_asic fifo_flows)
  (preprocess (pps ppx_jane ppx_hardcaml)))
 
 (executable

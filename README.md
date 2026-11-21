@@ -63,6 +63,12 @@ it is not a bucket for design-specific checks. See the
 
 Use an already installed compatible `hardcaml_asic` provider. The development
 dependency workflow is exposed by `python3 scripts/asic_dependency.py --help`.
+FIFO's build requires the provider's `hardcaml-asic-starter generate-collection`
+command. `asics/fifo_demo/flows/dune` opts in: add `flow_<id>.ml` beside
+`flow_standard.ml` to register a methodology on build, or add a profile module
+under `<id>/profiles/`. No Dune or default-selection edit is needed.
+`python3 scripts/test_flow_collection.py` exercises this convention on an
+isolated copy of FIFO, including plan and recorded run dispatch without EDA.
 Refresh/install is an explicit separate action; ordinary builds do not provision
 EDA tools. Building the native simulation adapter additionally requires the Silver
 provider SDK (`hardcaml_workbench_provider`).
