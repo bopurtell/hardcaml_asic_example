@@ -39,6 +39,13 @@ After changing simulation sources or upgrading a checkout from the old
 `pt8-memory-workloads` suite ID, run `python3 -B scripts/configure-simulation.py --refresh`.
 This rebuilds the manifest in place and leaves the existing companion and
 saved runs unchanged. Launch new memory tests from `memory-workloads`.
+On a Silver build that supports parallel simulation, opt in with
+`python3 -B scripts/configure-simulation.py --max-parallel-runs 2`, then reopen
+Silver. This changes only the simulation companion, without rebuilding if the
+manifest is current. The default is one attempt at a time; cases within a
+single attempt still run in order.
+After configuration, `python3 -B scripts/check-simulation-overlap.py` checks
+real provider overlap in temporary directories without changing Silver history.
 The companion and manifest are machine-local and ignored by Git: a fresh clone
 or a cleanup of ignored files requires setup again. Silver history is separate.
 If Silver was already open when the project was configured for the first time,

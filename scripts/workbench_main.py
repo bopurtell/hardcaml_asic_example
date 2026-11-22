@@ -299,10 +299,23 @@ def verify_install(root, store, published=False):
     return value
 
 
+def simulation_fields(data):
+    value = parse(data.decode())
+    keys = ('schema_version', 'provider_executable', 'provider_args',
+            'discovery_timeout_seconds', 'run_timeout_seconds')
+    if isinstance(value, list) and any(
+            isinstance(pair, list) and pair and pair[0] == 'max_parallel_runs'
+            for pair in value):
+        keys += ('max_parallel_runs',)
+    fields = record(value, keys)
+    if fields.get('max_parallel_runs', '1') not in tuple(map(str, range(1, 9))):
+        raise ValueError('max_parallel_runs must be an integer from 1 to 8')
+    return fields
+
+
 def simulation_config(root, path):
     data = regular(path)
-    fields = record(parse(data.decode()), ('schema_version', 'provider_executable', 'provider_args',
-                                          'discovery_timeout_seconds', 'run_timeout_seconds'))
+    fields = simulation_fields(data)
     if fields['schema_version'] != '1' or not Path(fields['provider_executable']).is_absolute():
         raise RuntimeError('invalid simulation configuration')
     args = fields['provider_args']

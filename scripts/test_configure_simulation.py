@@ -1,5 +1,7 @@
 """Exercise the normal/prepared simulation setup boundary without real builds."""
+from contextlib import redirect_stderr
 import importlib.util
+import io
 import json
 from pathlib import Path
 import sys
@@ -80,6 +82,60 @@ class ConfigureSimulation(unittest.TestCase):
         value = self.write_manifest(installed=True)
         setup.main([])
         self.mocks['validate_manifest'].assert_called_once_with(value, 'discover')
+        self.build.assert_not_called()
+
+    def test_parallelism_opt_in_updates_existing_config_without_building(self):
+        self.write_manifest(installed=True)
+        original = setup.simulation_fields(self.config.read_bytes())
+        setup.main(['--max-parallel-runs', '2'])
+        self.assertEqual(setup.simulation_fields(self.config.read_bytes()),
+                         dict(original, max_parallel_runs='2'))
+        current = self.config.read_bytes()
+        setup.main([])
+        self.assertEqual(self.config.read_bytes(), current)
+        setup.main(['--max-parallel-runs', '1'])
+        self.assertEqual(setup.simulation_fields(self.config.read_bytes()),
+                         dict(original, max_parallel_runs='1'))
+        self.build.assert_not_called()
+
+    def test_parallelism_opt_in_is_bounded(self):
+        for value in ('0', '9', '2.5'):
+            with (self.subTest(value=value), redirect_stderr(io.StringIO()),
+                  self.assertRaises(SystemExit) as error):
+                setup.main(['--max-parallel-runs', value])
+            self.assertEqual(error.exception.code, 2)
+        original = self.config.read_bytes()
+        for value in (0, 9, ['2']):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, '1 to 8'):
+                setup.simulation_fields(
+                    (setup.sexp([*setup.simulation_fields(original).items(),
+                                ('max_parallel_runs', value)]) + '\n').encode())
+
+    def test_parallelism_opt_in_can_publish_new_or_refresh_existing(self):
+        self.config.unlink()
+        setup.main(['--max-parallel-runs', '2'])
+        self.assertEqual(setup.simulation_fields(self.config.read_bytes())['max_parallel_runs'], '2')
+        original = self.config.read_bytes()
+        self.write_manifest(installed=True)
+        setup.main(['--refresh'])
+        self.assertEqual(self.config.read_bytes(), original)
+        setup.main(['--refresh', '--max-parallel-runs', '8'])
+        self.assertEqual(setup.simulation_fields(self.config.read_bytes())['max_parallel_runs'], '8')
+        self.assertEqual(self.build.call_count, 3)
+
+    def test_parallelism_preserves_mirrored_and_foreign_configs(self):
+        self.write_manifest(installed=True)
+        other = self.root / self.config.name
+        original = self.config.read_bytes()
+        other.write_bytes(original)
+        with self.assertRaisesRegex(RuntimeError, 'two configuration copies'):
+            setup.main(['--max-parallel-runs', '2'])
+        self.assertEqual(self.config.read_bytes(), original)
+        self.assertEqual(other.read_bytes(), original)
+        other.unlink()
+        self.write_config(self.root / 'custom_provider.py')
+        with self.assertRaisesRegex(RuntimeError, 'another provider'):
+            setup.main(['--max-parallel-runs', '2'])
         self.build.assert_not_called()
 
     def test_normal_refresh_refuses_prepared_or_foreign_config(self):
