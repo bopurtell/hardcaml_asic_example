@@ -20,6 +20,11 @@ complete existing directed generator. `trace_mib` applies only to `export-stress
 which streams checked Cyclesim transitions and produces a VCD of the specified
 size. Select one or more cases in the desired order. ASIC inputs must be empty.
 
+The native provider captures the optional Silver Testing declaration coordinates
+at each OCaml registration in `test_provider.ml`. This requires the WB-088
+provider SDK and a matching Silver daemon. After moving a registration, rebuild
+and adopt the provider, then refresh discovery to pick up its new coordinates.
+
 FS2 seeds are canonical decimal uint64, including `18446744073709551615`.
 Both adapters split all 64 bits into **four little-endian 16-bit words**, supplied to
 `Random.State.make` by `regression_with_seed_words`. No high bits are truncated.

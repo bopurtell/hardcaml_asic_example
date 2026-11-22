@@ -35,6 +35,11 @@ the displayed settings. Use `e` to change settings without running, or Enter to
 review and edit inputs for a single launch. Press `d` to
 refresh or retry discovery. After the
 run passes, select its VCD in Artifacts (`w` to view, `e` to export).
+To open a FIFO test's OCaml declaration without running it, select a case
+under **Controlled FIFO** in the Catalog and press `gd`. Silver selects the
+**Editor** workspace and opens this checkout's
+`ip/controlled_fifo/verif/simulation/test_provider.ml` in Cobalt. Press
+**Alt+Left** to return to the same case; another `gd` reuses the editor buffer.
 After changing simulation sources or upgrading a checkout from the old
 `pt8-memory-workloads` suite ID, run `python3 -B scripts/configure-simulation.py --refresh`.
 This rebuilds the manifest in place and leaves the existing companion and

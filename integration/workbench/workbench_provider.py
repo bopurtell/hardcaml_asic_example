@@ -124,7 +124,7 @@ def discover_child(command, env, timeout=8):
 
 
 def validate_catalog(value):
-    d = record(value, ('protocol_version', 'suites'))
+    d = record(value, ('protocol_version', 'suites'), optional=('declarations',))
     if d['protocol_version'] != '1' or not isinstance(d['suites'], list) or len(d['suites']) > 64:
         raise ValueError('invalid discovery version/suite count')
     def text(s):
@@ -140,6 +140,7 @@ def validate_catalog(value):
     suites = [record(s, ('id', 'label', 'cases', 'parameters', 'default_seed')) for s in d['suites']]
     unique(suites, 'id')
     total = 0
+    case_ids = set()
     for s in suites:
         text(s['label'])
         seed = s['default_seed']
@@ -152,6 +153,7 @@ def validate_catalog(value):
         total += len(cases)
         for c in cases:
             text(c['label'])
+            case_ids.add((s['id'], c['id']))
         parameters = [record(p, ('key', 'label', 'default', 'choices')) for p in s['parameters']]
         unique(parameters, 'key')
         for p in parameters:
@@ -165,6 +167,26 @@ def validate_catalog(value):
                 raise ValueError('default outside choices')
     if total > 1024:
         raise ValueError('too many discovery cases')
+    declarations = d.get('declarations', [])
+    if not isinstance(declarations, list) or len(declarations) > 1024:
+        raise ValueError('invalid discovery declaration count')
+    for entry in declarations:
+        declaration = record(entry, ('suite_id', 'case_id', 'relative_path', 'line', 'column'))
+        identity = declaration['suite_id'], declaration['case_id']
+        if not all(isinstance(key, str) for key in identity) or identity not in case_ids:
+            raise ValueError('undeclared or duplicate discovery declaration')
+        case_ids.remove(identity)
+        path = declaration['relative_path']
+        text(path)
+        if (any(part in ('', '.', '..') for part in path.split('/'))
+                or any(ord(c) < 32 or ord(c) == 127 or c == '\\' for c in path)):
+            raise ValueError('invalid discovery declaration path')
+        for name in ('line', 'column'):
+            number = declaration[name]
+            # Positive decimal in the range of Silver's 64-bit OCaml int.
+            if (not isinstance(number, str) or not re.fullmatch(r'[1-9][0-9]{0,18}', number)
+                    or int(number) > 2**62 - 1):
+                raise ValueError('invalid discovery declaration coordinate: ' + name)
     return d
 
 
@@ -198,14 +220,20 @@ def main(argv=None, *, manifest_check=None, drift_check=source_drift,
         raise ValueError('simulation suite catalog has changed; ' + guidance)
     env = environment_factory(manifest)
     if args.operation == 'discover':
+        # Additive FS2v1 provider metadata: legacy children need no new arguments.
+        # Silver negotiates exposure of these positions at its HTTP snapshot boundary.
         suites = []
+        declarations = []
         for suite in SUITES:
             child = discover_child(manifest['provider_commands'][suite], env)
             fields = validate_catalog(child)
             if [dict(s)['id'] for s in fields['suites']] != [suite]:
                 raise ValueError('child catalog does not match owned suite: ' + suite)
             suites.extend(fields['suites'])
+            declarations.extend(fields.get('declarations', []))
         value = [('protocol_version', 1), ('suites', suites)]
+        if declarations:
+            value.append(('declarations', declarations))
         validate_catalog(parse(sexp(value)))
         output = sexp(value) + '\n'
         if len(output.encode()) > LIMIT:

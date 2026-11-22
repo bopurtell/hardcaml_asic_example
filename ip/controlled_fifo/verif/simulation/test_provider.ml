@@ -1,18 +1,35 @@
 open! Core
 open Hardcaml_workbench_provider
 
+let suite_id = "controlled-fifo"
+
+(* Each [%here] is at the case registration, never inside this helper. The
+   prefix before each marker is ASCII with spaces (no tabs), so the OCaml byte
+   offset also counts display cells. The Dune filename is project-relative. *)
+let case (here : Source_code_position.t) id label =
+  ( { Wire.Case.id; label }
+  , { Wire.Declaration.suite_id
+    ; case_id = id
+    ; relative_path = here.pos_fname
+    ; line = here.pos_lnum
+    ; column = here.pos_cnum - here.pos_bol + 1
+    } )
+;;
+
+let cases, declarations =
+  List.unzip
+    [ case [%here] "directed" "Directed FIFO tests"
+    ; case [%here] "seeded" "Seeded random FIFO tests"
+    ; case [%here] "export-stress" "Large waveform export"
+    ]
+;;
+
 let discovery : Wire.Discovery.t =
   { protocol_version = 1
   ; suites =
-      [ { id = "controlled-fifo"
+      [ { id = suite_id
         ; label = "Controlled FIFO"
-        ; cases =
-            List.map
-              [ "directed", "Directed FIFO tests"
-              ; "seeded", "Seeded random FIFO tests"
-              ; "export-stress", "Large waveform export"
-              ]
-              ~f:(fun (id, label) : Wire.Case.t -> { id; label })
+        ; cases
         ; parameters =
             [ { key = "checker"
               ; label = "Checker mode"
@@ -151,5 +168,5 @@ let () =
     | _ ->
       Filename.concat (Filename.dirname Stdlib.Sys.executable_name) "fifo_sim.exe", argv
   in
-  Runner.main ~argv ~discovery ~validate_selection ~run:(run simulator) ()
+  Runner.main ~argv ~declarations ~discovery ~validate_selection ~run:(run simulator) ()
 ;;

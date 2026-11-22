@@ -14,6 +14,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'integration/workbench'))
 from wire import parse, sexp
+from workbench_provider import validate_catalog
 
 
 def main():
@@ -27,8 +28,22 @@ def main():
          '--simulator', str(args.simulator.resolve())],
     ]
     discovery = [subprocess.run(c + ['discover', '--protocol-version', '1'],
-                               check=True, capture_output=True, text=True) for c in commands]
-    assert parse(discovery[0].stdout) == parse(discovery[1].stdout), 'discovery differs'
+                                check=True, capture_output=True, text=True) for c in commands]
+    catalogs = [validate_catalog(parse(result.stdout)) for result in discovery]
+    native_declarations = catalogs[0].pop('declarations', [])
+    assert catalogs[0] == catalogs[1], 'launch catalog differs'
+    if native_declarations:
+        path = 'ip/controlled_fifo/verif/simulation/test_provider.ml'
+        source = (ROOT / path).read_text().splitlines()
+        assert {dict(entry)['case_id'] for entry in native_declarations} == {
+            'directed', 'seeded', 'export-stress'}
+        for entry in native_declarations:
+            fields = dict(entry)
+            assert fields['relative_path'] == path, fields
+            line, column = int(fields['line']), int(fields['column'])
+            marker = f'[%here] "{fields["case_id"]}"'
+            assert all(32 <= ord(c) < 127 for c in source[line - 1][:column - 1]), fields
+            assert source[line - 1][column - 1:].startswith(marker), fields
     scenarios = [
         (['directed'], '42', 'normal'),
         (['seeded'], '0', 'normal'),
@@ -54,7 +69,7 @@ def main():
         commands.append([str(Path(installed['generation']) / 'test_provider.exe')])
         catalog = subprocess.run(commands[-1] + ['discover', '--protocol-version', '1'],
                                  check=True, capture_output=True, text=True)
-        assert parse(catalog.stdout) == parse(discovery[1].stdout), 'installed discovery differs'
+        assert parse(catalog.stdout) == parse(discovery[0].stdout), 'installed discovery differs'
         for index, (cases, seed, checker) in enumerate(scenarios):
             parameters = [('checker', checker), ('cycles', '64'), ('trace_mib', '1')]
             if index == len(scenarios) - 1:

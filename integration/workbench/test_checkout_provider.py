@@ -22,6 +22,11 @@ FIFO_CATALOG = [('protocol_version', 1), ('suites', [[
     ('cases', [[('id', 'directed'), ('label', 'Directed FIFO tests')],
                [('id', 'seeded'), ('label', 'Seeded random FIFO tests')]]),
     ('parameters', []), ('default_seed', 42)]])]
+FIFO_DECLARATION = [
+    ['suite_id', 'controlled-fifo'], ['case_id', 'directed'],
+    ['relative_path', 'ip/controlled_fifo/verif/simulation/test_provider.ml'],
+    ['line', '21'], ['column', '12'],
+]
 
 
 class CheckoutProvider(unittest.TestCase):
@@ -65,6 +70,7 @@ class CheckoutProvider(unittest.TestCase):
         for name in checkout.MODELS:
             (self.models / name).write_text('module model; endmodule\n')
         self.calls = []
+        self.fifo_catalog = FIFO_CATALOG
         self.options = dict(project_root=self.root, build_dir=self.build,
                             asic_generation=self.generation, model_root=self.models,
                             run=self.build_fake, environment={'PATH': os.defpath})
@@ -80,7 +86,7 @@ class CheckoutProvider(unittest.TestCase):
             self.executable(self.build / 'default' / target, 'pass\n')
         self.executable(self.build / 'default' / checkout.TARGETS[0],
             'import json, os, pathlib, sys, time\n'
-            f'catalog = {sexp(FIFO_CATALOG)!r}\n'
+             f'catalog = {sexp(self.fifo_catalog)!r}\n'
             'if "discover" in sys.argv:\n'
             '    print(catalog)\n'
             'else:\n'
@@ -155,6 +161,50 @@ class CheckoutProvider(unittest.TestCase):
         self.prepare()
         result = self.invoke('discover', '--protocol-version', '1')
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_discovery_merges_positions_with_a_legacy_child(self):
+        self.fifo_catalog = [*FIFO_CATALOG, ('declarations', [FIFO_DECLARATION])]
+        self.prepare()
+        result = self.invoke('discover', '--protocol-version', '1')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        value = router.validate_catalog(parse(result.stdout))
+        self.assertEqual([dict(s)['id'] for s in value['suites']], list(router.SUITES))
+        self.assertEqual(value['declarations'], [FIFO_DECLARATION])
+
+        # Metadata is advisory; the identical run command still reaches the child.
+        request = self.request()
+        result = self.invoke(*self.run_args(request))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.directory / 'events').read_text(), 'child events unchanged\n')
+
+    def test_discovery_rejects_malformed_or_unowned_positions_without_partial_catalog(self):
+        def replace(**fields):
+            return [list(pair) for pair in (dict(FIFO_DECLARATION) | fields).items()]
+
+        invalid = [
+            [FIFO_DECLARATION, FIFO_DECLARATION],
+            [replace(suite_id='memory-workloads', case_id='flops256')],
+            [replace(case_id='missing')],
+            [replace(case_id=['directed'])],
+            [replace(relative_path='/absolute.ml')],
+            [replace(relative_path='../outside.ml')],
+            [replace(relative_path='ip/./outside.ml')],
+            [replace(relative_path='ip\\outside.ml')],
+            [replace(relative_path='ip/\nsource.ml')],
+            [replace(line='0')],
+            [replace(column=str(2**62))],
+            [replace(column=['12'])],
+            [replace(extra='unsupported')],
+            'not-a-list',
+        ]
+        for declarations in invalid:
+            with self.subTest(declarations=declarations):
+                self.fifo_catalog = [*FIFO_CATALOG, ('declarations', declarations)]
+                self.prepare()
+                result = self.invoke('discover', '--protocol-version', '1')
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertRegex(result.stderr, 'declaration|unexpected record fields')
+                self.assertEqual(result.stdout, '')
 
     def test_prepare_only_accepts_exact_workspace_link(self):
         template = self.root / 'scripts/dune-workspace.local'

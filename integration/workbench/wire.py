@@ -72,7 +72,8 @@ def parse(text):
     return value
 
 
-def record(value, keys):
+def record(value, keys, *, optional=()):
+    """Decode a strict record, with explicitly named optional fields."""
     if not isinstance(value, list):
         raise ValueError('expected record')
     out = {}
@@ -80,7 +81,8 @@ def record(value, keys):
         if not isinstance(pair, list) or len(pair) != 2 or not isinstance(pair[0], str) or pair[0] in out:
             raise ValueError('invalid or duplicate record field')
         out[pair[0]] = pair[1]
-    if set(out) != set(keys):
+    required = set(keys)
+    if not required <= out.keys() <= required.union(optional):
         raise ValueError('unexpected record fields')
     return out
 
