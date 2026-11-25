@@ -40,7 +40,7 @@ def package(root, archive, proof):
         shutil.copyfile(source, root / name)
         sources[name] = str(source)
     for name, source in (("README.md", Path(__file__).with_name("EVIDENCE.md")),
-                         ("verify.py", Path(__file__).resolve().parents[3] / "acceptance/sram/verify.py")):
+                         ("verify.py", Path(__file__).with_name("verify_evidence.py"))):
         require(not (root / name).exists(), "new portable file already exists")
         shutil.copyfile(source, root / name)
         sources[name] = str(source)

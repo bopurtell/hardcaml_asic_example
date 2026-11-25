@@ -1,209 +1,53 @@
-# Everyday Silver on the actual checkout
+# Everyday Silver
 
-`scripts/silver.py` uses the repository root containing `dune-project` as
-the editable project. It never creates a copied `project/`. Run the script from
-any directory; defaults derive from the script location. The previous launcher,
-`scripts/workbench_main.py`, still accepts the same commands and uses the same state.
+Silver is optional. For new users, follow the [Silver setup guide](silver.md)
+to configure the actual example checkout and launch `ag --standalone`.
+The Dune root is this checkout, not a copied project directory.
 
-**Local setup verified, 2026-11-11:** prepared and published against the real checkout.
-The actual production daemon/client startup, both simulation catalogs and all seven
-ASIC endpoint plans passed; the startup smoke submitted no simulation or EDA.
-Persistent receipt:
-`.dev/workbench-main/verification/startup-20261111T001741Z-bcdf6a98/receipt.json`.
-The smoke stopped only its own processes; the main server is left stopped for
-manual startup. Older acceptance-store sessions were preserved.
+## Use the configured project
 
-## Integration handoff
+* Select `controlled_fifo / default` in the ASIC launch-target picker.
+* Preview `standard / balanced / synthesis` before launching.
+* In Testing, choose Controlled FIFO or Memory workloads and select cases.
+  Press `R` to run, `e` to edit settings, or `d` to refresh discovery.
+* Select a completed VCD in Artifacts; press `w` to view and `e` to export.
 
-The separate simulation helper owns `integration/workbench/checkout_provider.py`,
-its persistent manifest and its source-drift/build policy. `prepare --build` calls
-`checkout_setup.prepare_simulation` under the launcher's shared example lock,
-with the actual root, `_build`, selected generation, stock model root and a bounded
-build callback (1800 seconds, 8 MiB combined output). It then produces the regular
-FS2 companion handoff at:
+The `controlled-fifo` suite's `export-stress` test can generate a 1, 16 or
+64 MiB VCD (`trace_mib`). Large traces may require an external waveform viewer.
 
-```
-.dev/workbench-main/simulation/configuration.sexp
-```
-
-Without `--build`, an already prepared helper manifest is required. An alternate
-configuration is accepted with `prepare --simulation-config /absolute/file`.
-The configuration must name an available absolute executable (normally Python),
-include the actual checkout's absolute `integration/workbench/checkout_provider.py`
-in `provider_args`, and supply `--manifest /absolute/manifest.json`. That regular
-JSON manifest must contain `project_root` equal to the actual canonical checkout
-root. The launcher validates this handoff without running the router.
-No root companion is published if the helper is missing or points to a copied root.
-
-## Prepare, publish, then start
-
-Use the installed compatible compiler environment:
+After source changes, refresh the simulation configuration:
 
 ```sh
-opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py prepare --build
+python3 -B scripts/configure-simulation.py --refresh
+```
+
+Reopen Silver after changing machine-local configuration. A regular Dune build
+alone does not regenerate the simulation manifest.
+
+## Already prepared launcher installations
+
+Existing users of the prepared-session launcher can continue with:
+
+```sh
 python3 -B scripts/silver.py status
-python3 -B scripts/silver.py publish --dry-run
+python3 -B scripts/silver.py open
 ```
 
-Preparation explicitly compiles the current FIFO project, native FIFO provider and
-simulator, and workload emit/public executables at `-j2`. It does not provision
-tools, build Silver, run simulations/EDA, publish root companions, or start a
-server. Without `--build`, all required current build paths must already exist.
-
-After coordinating with other users of the root checkout, publish separately:
+`open` starts the selected daemon and foreground client, and stops its own daemon
+when the client exits. To keep the daemon and jobs alive across client exits,
+run in separate terminals:
 
 ```sh
-python3 -B scripts/silver.py publish
+python3 -B scripts/silver.py daemon
+python3 -B scripts/silver.py client
 ```
 
-Publication checks the owner locks and Linux process project/state/discovery
-arguments, root-selection environment, working directories and persisted workspace
-keys. It does not depend on executable names. Missing lock/state evidence is
-reported explicitly as uncertain and fails closed. This is a read-only preflight, not a global reservation
-protocol: other launchers must not open the root during publication. The launcher
-does not stop, signal or adopt other sessions. All root companion changes require
-the exact previously recorded hashes; unknown edits are refused. The first
-publication uses the exact baseline captured by `prepare`.
+For an external waveform viewer, append `--simulation-viewer /usr/bin/gtkwave`
+to the client command. The `scripts/workbench_main.py` launcher name remains
+compatible. The launcher has its own explicit build, preparation and publication
+commands for maintaining existing selections; see `scripts/silver.py --help`.
+Do not publish over an active session or replace an existing selection by hand.
 
-On an already prepared and published checkout, open Silver in one terminal:
-
-```sh
-opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py open
-```
-
-`open` uses the installed daemon/client pair, including releases predating
-`--standalone`. It holds the session lock, starts the daemon with the usual
-persistent state, and waits up to 30 seconds for that process to publish its
-loopback endpoint before connecting the foreground client. Quitting the client
-or interrupting the launcher stops the owned daemon. If the main daemon is
-already running, use `client` to attach instead.
-
-To keep the daemon and its jobs alive across client exits, use separate terminals:
-
-```sh
-opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py daemon
-opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py client
-```
-
-For verified external waveform handoff, append
-`--simulation-viewer /usr/bin/gtkwave` to the client command. See the
-[large-trace export acceptance walkthrough](large_trace_export.md) for the
-1/16/64 MiB FIFO case, export controls and cancellation exercise.
-
-The foreground production daemon selects an available loopback port with `--port 0`
-and publishes `discovery/daemon.sexp` using `--discovery-dir`. The client requires
-the daemon's lifetime lock and explicit endpoint; it never spawns a daemon. It
-opens the actual repository with `--environment inherited`.
-
-With the separate `daemon` command the launcher keeps the session lock and
-forwards SIGINT/SIGTERM to its daemon. A separate `client` exit leaves it running.
-
-## Installed selections and persistence
-
-Defaults:
-
-* ASIC generation:
-  `.dev/asic-synthesis-envelope-v1/generations/36205ea4748c4972877ac198356d8e44`.
-  The directory name is historical; the launcher **removes**
-  `HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT` rather than enabling its synthesis-only mode.
-  It adds no endpoint restriction.
-* SDK: `.dev/workbench-provider-sdk`.
-* Prebuilt Silver pair: sibling
-  `silver/_build_workbench/default/{daemon,terminal}/main.exe`.
-* Root ASIC project executable:
-  `_build/default/asics/fifo_demo/cli/chip.exe`.
-* Results: `_flow_results/workbench/{asic,preparation}`.
-
-`prepare` supports `--asic-generation`, `--sdk-prefix`, `--wb-build-root`, and
-`--expected-daemon-sha256` / `--expected-client-sha256`. Installed app bytes and
-companion configs live in immutable-by-convention selections under
-`.dev/workbench-main/installs/`; `install.json` atomically selects a matching pair.
-Earlier selections remain available.
-
-The root `asic-dependency.json` now records provider
-`4b6bb60562c0133db9e3ccc6b183736e5658a3f0` for future explicit recorded refreshes.
-That source expectation does not replace the ASIC generation above or the
-dependency selected in `install.json`. A reviewed launcher dependency upgrade
-requires an explicit `prepare --update --asic-generation /absolute/generation`
-and subsequent publication; see [dependency commands](dependency_commands.md#current-recorded-dependency).
-
-All session state belongs to `.dev/workbench-main/`:
-
-```
-install.json                 selected apps, dependencies, config hashes and root
-installs/                    app pairs, proposed configs, initial exact backups
-published.json               last published companion hashes
-publications/                exact pre-publication backups
-state/                       normal daemon durable history/artifacts/registry
-discovery/                   normal daemon endpoint and lifetime lock
-tmp/                         daemon temporary supervisor logs (TMPDIR)
-session.lock                 launcher ownership across daemon lifetime
-```
-
-Client preferences use the normal `${XDG_STATE_HOME:-$HOME/.local/state}` location.
-The server's persistent state and temporary-log root are explicit; there is no
-`/tmp` acceptance-store dependency.
-
-The inherited project environment is cleaned of Git repository/config selectors,
-captured PT8/Silver (including legacy Workbench) launch selectors, transient SSH/tmux session transports and
-the synthesis-only cap. `OCAMLPATH`
-contains the selected ASIC and SDK installations; OMP/OpenBLAS/MKL each use one
-thread. PATH is reconstructed from the selected switch bin, provider bin, `/usr/bin`
-and `/bin`, discarding every inherited PATH entry. Builds pin the actual switch
-Dune and `/usr/bin/git` resolution, with a child-process tool/version check.
-
-The explicit launcher/helper build uses `-j2`; this does **not** control the stock
-Silver preparation build (`-j6`), generic build/test (`-j20`), or EDA's normal
-six-worker configuration. The launcher does not enforce an aggregate worker/task
-ceiling. Run **one heavy operation at a time** and budget all sessions/nested work
-within the workspace-wide maximum of 20 jobs. Do not overlap stock preparation,
-generic build/test and EDA as if the helper's two-job setting governed them.
-
-## Editing and explicit updates
-
-```sh
-# Current source only, with this session's daemon explicitly stopped:
-opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py build
-
-# Reviewed replacement app pair/configuration/dependency selection:
-opam exec --switch=5.2.0+ox -- python3 -B scripts/silver.py prepare --update --build \
-  --expected-daemon-sha256 REVIEWED_DAEMON_SHA256 \
-  --expected-client-sha256 REVIEWED_CLIENT_SHA256
-python3 -B scripts/silver.py publish
-```
-
-Repeated plain `prepare` verifies the existing installation. `build` does not
-change apps/configuration. Builds use `_build` and the shared persistent workspace
-lock `../.workbench-example-build.lock`; other checkout build helpers should use
-that same lock. No ASIC installation is refreshed implicitly.
-
-After a source rebuild, refresh the Testing catalog / ASIC plan as appropriate.
-The Testing catalog checks its prepared source manifest, including the workspace
-template selected by `scripts/silver.py configure-dune`. After adding that
-workspace or editing its template, run the `build` command above to refresh
-the manifest, then retry simulation discovery. A plain `dune build` alone
-does not write the simulation manifest.
-Simulation source-drift policy is owned by the checkout helper; root companion
-configuration is fenced by Silver's explicit discovery contract. Ordinary Fresh
-ASIC preparation builds current source and emits its own exact bundle.
-
-Publication backs up all existing regular companion bytes before changing any
-file. Each file replacement is atomic, with rollback on caught failure. A crash
-can leave `publication-pending.json`: startup then refuses to proceed. Inspect its
-expected/previous hashes and exact backup directory, reconcile only those bytes,
-and remove the journal only after deliberate recovery. There is no automatic
-adoption or silent overwrite of user edits.
-
-Focused launcher verification (inert fixture files, no native daemon or EDA):
-
-```sh
-python3 -B scripts/test_workbench_main.py -v
-```
-
-## Configuration naming
-
-New project companions are `.silver/silver-asic.sexp`,
-`.silver/silver-preparation.sexp`, and `.silver/silver-simulation.sexp`.
-See the [root migration procedure](../README.md#silver-and-local-storage)
-before moving old project files. The prepared store and its receipts keep
-their existing paths and immutable captures.
+The ordinary [Silver setup guide](silver.md) is the recommended path for new
+installations. See its [configuration compatibility section](silver.md#configuration-compatibility)
+if migrating old companion names.

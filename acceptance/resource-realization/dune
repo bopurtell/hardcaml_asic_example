@@ -1,4 +1,0 @@
-(executable
- (name installed_api)
- (modules installed_api)
- (libraries hardcaml_asic.execution yojson))

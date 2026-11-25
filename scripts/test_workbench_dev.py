@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """B's bounded direct-provider/lifecycle acceptance in a new private store. No EDA.
 
-Uses the real captured SDK/native FIFO/PT8 tools. Every preparation build is -j2
+Uses the real captured SDK/native FIFO/memory workload tools. Every preparation build is -j2
 under the shared example lock. C's native HTTP/PTY verification is separate.
 """
 import argparse
@@ -195,14 +195,14 @@ class Acceptance(unittest.TestCase):
                         return data
                     self.assertEqual(stable(path.read_bytes()), stable((direct / 'artifacts' / path.name).read_bytes()))
 
-    def test_03_pt8_both_actual_result_waveforms(self):
+    def test_03_memory_both_actual_result_waveforms(self):
         directory, argv = self.request('memory-workloads-both', selection('memory-workloads'))
         _, events = self.execute(directory, argv)
         self.assertEqual(events[-1]['payload'], ['Finished', 'Passed'])
         for case in ('flops256', 'exact256'):
             reference = json.loads((directory / 'artifacts' / (case + '-result-reference.json')).read_text())
             result = Path(reference['result'])
-            self.assertTrue(result.is_relative_to(self.store / 'project/.dev/asic-pt8-workbench/workloads'))
+            self.assertTrue(result.is_relative_to(self.store / 'project/.dev/memory-workloads/workloads'))
             inspected = subprocess.run([self.initial['inputs']['asic_generation'] + '/bin/hardcaml-asic-flow',
                 'workload-inspect', str(result), '--json'], capture_output=True, timeout=30, check=True)
             inspection = json.loads(inspected.stdout)
@@ -232,7 +232,7 @@ class Acceptance(unittest.TestCase):
             self.assertEqual(list((directory / 'artifacts').iterdir()), [])
         selected = dict(selection('memory-workloads'))
         selected['seed'] = '42'
-        directory, argv = self.request('pt8-wrong-seed', list(selected.items()))
+        directory, argv = self.request('memory-wrong-seed', list(selected.items()))
         self.execute(directory, argv, expected=2)
         self.assertEqual((directory / 'events.sexp').read_bytes(), b'')
 
@@ -827,7 +827,7 @@ class Acceptance(unittest.TestCase):
 root = pathlib.Path(sys.argv[1]).resolve(strict=True)
 sys.path.insert(0, str(root / 'integration/workbench'))
 names = ('wire', 'workbench_paths', 'workbench_git', 'workbench_provider',
-         'pt8_acceptance', 'pt8_workloads', 'pt8_workbench_runner', 'pt8_workbench_provider')
+         'command_receipts', 'memory_workload', 'memory_runner', 'memory_provider')
 modules = {name: str(pathlib.Path(importlib.import_module(name).__file__).resolve(strict=True))
            for name in names}
 assert all(pathlib.Path(path).is_relative_to(root) for path in modules.values()), modules

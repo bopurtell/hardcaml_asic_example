@@ -29,7 +29,7 @@ let inventory checked requirement elaborated =
    | Exact -> require "exact stock macro"
        (Resource.Selection.Implementation.equal r.selection.implementation
           (Macro "RM_IHPSG13_1P_256x16_c2_bm_bist"))
-   | _ -> failwith "no fallback in PT8")
+   | _ -> failwith "unexpected memory fallback")
 ;;
 
 (* Independent behavioral oracle: expected values depend on the declared depth,

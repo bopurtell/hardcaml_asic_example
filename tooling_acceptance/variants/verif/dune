@@ -1,4 +1,4 @@
 (executable
  (name conformance)
- (libraries pt8_adapter core hardcaml hardcaml_asic)
+ (libraries variant_adapter core hardcaml hardcaml_asic)
  (preprocess (pps ppx_jane)))

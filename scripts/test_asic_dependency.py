@@ -237,6 +237,16 @@ class SetupTests(unittest.TestCase):
                 self.assertTrue((package / "flow/spec.mli").is_file())
                 self.assertFalse((package / "elaborated_project.mli").exists())
 
+    def test_chip_target_interface_validated_in_source_and_install(self):
+        self.regroup()
+        (self.source / "lib/project.mli").rename(self.source / "lib/chip_target.mli")
+        receipt = self.refresh("development")
+        package = Path(receipt["generation"]) / "lib/hardcaml_asic"
+        self.assertTrue((package / "chip_target.mli").is_file())
+        (self.source / "lib/chip_target.mli").write_text("type t\n")
+        with self.assertRaisesRegex(dep.Error, "incompatible Project.create"):
+            self.refresh("development")
+
     def test_grouped_layout_failures_and_mixed_layouts_refused(self):
         self.regroup()
         first = self.refresh()

@@ -29,7 +29,7 @@ IMPORT_GROUPS = {name: (name,) for name in ('ip/controlled_fifo/verif/cyclesim',
     'tooling_acceptance/timing', 'bootstrap.sh')}
 OWNED_SUPPORT = ('integration/workbench/workbench_provider.py', 'scripts/workbench_dev.py',
                   'integration/workbench/config_location.py',
-                 'scripts/test_workbench_dev.py', 'scripts/test_pt8_waveforms.py',
+                 'scripts/test_workbench_dev.py', 'scripts/test_memory_waveforms.py',
                   'scripts/workbench_git.py')
 
 
@@ -615,14 +615,13 @@ def capture(args, store, prior, receipt, migration=None):
         if before != {kind: sha(path) for kind, path in originals.items()}:
             raise RuntimeError('Silver app pair changed during capture; retry refresh')
     for directory, names in (
-        ('integration/workbench', ('pt8_workbench_provider.py', 'pt8_workbench_runner.py', 'workbench_paths.py', 'wire.py', 'workbench_provider.py')),
-        ('tooling_acceptance/workloads/controls', ('pt8_workloads.py',)),
-        ('tooling_acceptance/variants/controls', ('pt8_acceptance.py',)),
+        ('integration/workbench', ('memory_provider.py', 'memory_runner.py', 'workbench_paths.py', 'wire.py', 'workbench_provider.py')),
+        ('tooling_acceptance/workloads/support', ('memory_workload.py', 'command_receipts.py')),
         ('scripts', ('workbench_git.py',))):
         for name in names:
             copy_checked(source / directory / name, generation / 'provider' / directory / name)
     # Reuse the proven two-job private-root shim, with its existing variable contract.
-    copy_checked(source / 'integration/workbench/pt8_workbench_dune.py', generation / 'tool-bin/dune')
+    copy_checked(source / 'integration/workbench/bounded_dune.py', generation / 'tool-bin/dune')
     real_git = Path(inputs['git'])
     with real_git.open('rb') as stream:
         if stream.read(4) != b'\x7fELF':
@@ -660,7 +659,7 @@ def capture(args, store, prior, receipt, migration=None):
     python = inputs['python']
     commands = {
         'controlled-fifo': [str(generation / 'provider/test_provider.exe'), '--simulator', str(generation / 'provider/fifo_sim.exe')],
-        MEMORY_SUITE: [python, '-B', str(generation / 'provider/integration/workbench/pt8_workbench_provider.py'),
+        MEMORY_SUITE: [python, '-B', str(generation / 'provider/integration/workbench/memory_provider.py'),
             '--generation', str(asic), '--producer-root', str(store / 'project'),
             '--emitter', str(generation / 'provider/workload_emit.exe'), '--model-root', str(models)],
     }

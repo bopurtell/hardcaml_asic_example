@@ -1,2 +1,0 @@
-PASS memory RTL: load/read 256x16, staged/disabled hold, reset retains RAM; checks=1280
-/tmp/opencode/sram-final-archive-1_0qrz5t/physical-p4/postchecks/0553f6d19c8f42d28c057fc65ed23510/testbench.v:71: $finish called at 25668000 (1ps)

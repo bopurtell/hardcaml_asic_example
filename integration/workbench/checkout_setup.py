@@ -52,7 +52,7 @@ def prepare_simulation(*, project_root, build_dir, asic_generation, model_root,
     targets = checkout.TARGETS[:3] if installed_package else checkout.TARGETS
     binaries = {name: str(build / 'default' / name) for name in targets}
     fifo = [binaries[checkout.TARGETS[0]], '--simulator', binaries[checkout.TARGETS[1]]]
-    memory = [str(python), '-B', str(root / 'integration/workbench/pt8_workbench_provider.py'),
+    memory = [str(python), '-B', str(root / 'integration/workbench/memory_provider.py'),
               '--generation', str(generation), '--producer-root', str(root),
               '--emitter', binaries[checkout.TARGETS[2]], '--model-root', str(models),
               '--output-root', str(state / 'workloads')]

@@ -1,4 +1,4 @@
-# PT8 memory adapter
+# Parameterized memory adapter
 
 ## Current entry points
 
@@ -7,20 +7,16 @@ compatible ASIC provider's `lib` directory:
 
 ```sh
 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-  opam exec --switch=5.2.0+ox -- dune build --build-dir _build_migration_tooling -j6 \
+  opam exec --switch=5.2.0+ox -- dune build --build-dir _build -j6 \
   tooling_acceptance/variants/variant_cli.exe \
   tooling_acceptance/variants/verif/conformance.exe
-_build_migration_tooling/default/tooling_acceptance/variants/verif/conformance.exe valid
-_build_migration_tooling/default/tooling_acceptance/variants/verif/conformance.exe ignored
-python3 -B tooling_acceptance/variants/controls/pt8_acceptance.py --help
+_build/default/tooling_acceptance/variants/verif/conformance.exe valid
+_build/default/tooling_acceptance/variants/verif/conformance.exe ignored
 ```
 
 `ignored` deliberately exits 1 after both conformance checks reject the faulty
-constructor. `controls/` contains the flat-import phase drivers; workload controls
-explicitly import shared helpers from here. Phase drivers retain `_build_pt8`,
-with executable paths under `tooling_acceptance/variants` and tests under `verif`.
-Historical seals preserve original source paths and hashes in retained evidence;
-they may reject changed current sources and must not be used to rewrite past runs.
+constructor. Both cases use the same public adapter and are runnable without EDA.
+Historical qualification drivers and receipts are archived separately.
 
 ## Adapter contract
 

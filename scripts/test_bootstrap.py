@@ -108,8 +108,8 @@ target.chmod(0o755)
     def recorded(self):
         return json.loads(self.record.read_text())
 
-    def assert_forwarded(self, args, root=None):
-        result = self.invoke(*args)
+    def assert_forwarded(self, args, root=None, silver=False):
+        result = self.invoke(*(["--with-silver"] if silver else []), *args)
         self.assertEqual(result.returncode, 0, result.stderr)
         record = self.recorded()
         self.assertEqual(record["argv"], ["provision", "--toolchain",
@@ -118,9 +118,9 @@ target.chmod(0o755)
         self.assertEqual(record["env"], {key: self.env.get(key) for key in record["env"]})
         self.assertFalse((self.project / "_flow_tools").exists())
 
-    def test_no_arguments_provisions_then_configures_fifo_from_any_cwd(self):
+    def test_silver_provisions_then_configures_fifo_from_any_cwd(self):
         self.assertTrue(os.access(BOOTSTRAP, os.X_OK))
-        self.assert_forwarded([])
+        self.assert_forwarded([], silver=True)
         argv = json.loads(self.build_record.read_text())
         self.assertEqual(argv[0], "build")
         self.assertIn(TARGET, argv)
@@ -133,11 +133,18 @@ target.chmod(0o755)
         self.assertEqual(dict(parse((configs / PREP).read_text()))["build_target"], TARGET)
         self.assertFalse((self.project / ASIC).exists())
         self.assertFalse((self.project / PREP).exists())
-        result = self.invoke(cwd=self.project, command="./bootstrap.sh")
+        result = self.invoke("--with-silver", cwd=self.project, command="./bootstrap.sh")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.recorded()["argv"],
                          ["provision", "--toolchain", str(self.project / "_flow_tools")])
         self.assertEqual(self.recorded()["cwd"], str(self.project))
+
+    def test_default_is_provision_only_even_without_silver_setup(self):
+        (self.project / "scripts/configure-simulation.py").unlink()
+        (self.project / "scripts/configure-synthesis.py").unlink()
+        self.assert_forwarded([])
+        self.assertFalse(self.build_record.exists())
+        self.assertFalse((self.project / ".silver").exists())
 
     def test_setup_existing_tools_without_reprovisioning(self):
         tools = self.project / "_flow_tools"
@@ -180,7 +187,7 @@ target.chmod(0o755)
                               root=self.env["TOOLCHAIN"])
 
     def test_explicit_root_follows_default(self):
-        self.assert_forwarded(["--toolchain", "caller's tools"])
+        self.assert_forwarded(["--toolchain", "caller's tools"], silver=True)
         fields = dict(parse((self.project / ".silver" / ASIC).read_text()))
         tools = self.caller / "caller's tools"
         self.assertEqual(fields["toolchain"], str(tools))
@@ -191,12 +198,12 @@ target.chmod(0o755)
     def test_mixed_existing_locations_preserved_without_duplicate_configs(self):
         root_config = self.project / "hardcaml-workbench-asic.sexp"
         root_config.write_bytes(b"owner's root selection\n")
-        self.assert_forwarded([])
+        self.assert_forwarded([], silver=True)
         local = self.project / ".silver"
         self.assertFalse((local / ASIC).exists())
         self.assertTrue((local / PREP).is_file())
         (local / PREP).write_bytes(b"owner's preparation\n")
-        self.assert_forwarded([])
+        self.assert_forwarded([], silver=True)
         self.assertEqual(root_config.read_bytes(), b"owner's root selection\n")
         self.assertEqual((local / PREP).read_bytes(), b"owner's preparation\n")
         self.assertFalse((self.project / PREP).exists())
@@ -207,7 +214,7 @@ target.chmod(0o755)
         local.mkdir()
         for directory, name in ((local, PREP), (self.project, "hardcaml-workbench-preparation.sexp")):
             (directory / name).write_text(str(directory))
-        self.assertNotEqual(self.invoke().returncode, 0)
+        self.assertNotEqual(self.invoke("--with-silver").returncode, 0)
         for directory, name in ((local, PREP), (self.project, "hardcaml-workbench-preparation.sexp")):
             self.assertEqual((directory / name).read_text(), str(directory))
             self.assertFalse((directory / ASIC).exists())
@@ -226,13 +233,13 @@ target.chmod(0o755)
             path.write_bytes(b"owner selection\n")
         self.assertEqual(config_location.selected(self.project, ASIC), names[0])
         self.assertEqual(config_location.destinations(self.project, ASIC), tuple(names))
-        self.assert_forwarded([])
+        self.assert_forwarded([], silver=True)
         self.assertFalse(self.build_record.exists())
         self.assertEqual([path.read_bytes() for path in names], [b"owner selection\n"] * 6)
         for path in names:
             with self.subTest(conflict=path):
                 path.write_bytes(b"conflict\n")
-                self.assertNotEqual(self.invoke().returncode, 0)
+                self.assertNotEqual(self.invoke("--with-silver").returncode, 0)
                 self.assertEqual(path.read_bytes(), b"conflict\n")
                 path.write_bytes(b"owner selection\n")
         for path in names:
@@ -242,12 +249,12 @@ target.chmod(0o755)
 
     def test_failed_provision_or_build_never_publishes_configs(self):
         self.env["EXIT_CODE"] = "37"
-        self.assertEqual(self.invoke().returncode, 37)
+        self.assertEqual(self.invoke("--with-silver").returncode, 37)
         self.assertFalse(self.build_record.exists())
         self.assertFalse((self.project / ".silver").exists())
         del self.env["EXIT_CODE"]
         self.env["BUILD_FAIL"] = "1"
-        self.assertEqual(self.invoke().returncode, 42)
+        self.assertEqual(self.invoke("--with-silver").returncode, 42)
         self.assertFalse((self.project / ".silver").exists())
 
     def test_provider_modes_and_base_python_forwarded_verbatim(self):
@@ -268,17 +275,35 @@ target.chmod(0o755)
                     config.write_text("owner's ASIC selection\n")
                     (self.project / "dune-workspace").write_text("owner's workspace\n")
                 for status in (0, 1):
-                    before = snapshot()
-                    self.env["EXIT_CODE"] = str(status)
-                    result = self.invoke("--check")
-                    self.assertEqual(result.returncode, status, result.stderr)
-                    self.assertEqual(self.recorded()["argv"], ["provision", "--toolchain",
-                                     str(self.project / "_flow_tools"), "--check"])
-                    self.assertEqual(snapshot(), before)
-                    self.assertFalse(self.build_record.exists())
+                    for opt_in in ([], ["--with-silver"]):
+                        before = snapshot()
+                        self.env["EXIT_CODE"] = str(status)
+                        result = self.invoke(*opt_in, "--check")
+                        self.assertEqual(result.returncode, status, result.stderr)
+                        self.assertEqual(self.recorded()["argv"], ["provision", "--toolchain",
+                                         str(self.project / "_flow_tools"), "--check"])
+                        self.assertEqual(snapshot(), before)
+                        self.assertFalse(self.build_record.exists())
 
-    def test_help_is_delegated(self):
-        self.assert_forwarded(["--help"])
+    def test_help_and_unknown_modes_are_delegated(self):
+        for flag in ("--help", "--unknown"):
+            self.assert_forwarded([flag])
+            self.assert_forwarded([flag], silver=True)
+        self.assertFalse(self.build_record.exists())
+        self.assertFalse((self.project / ".silver").exists())
+
+    def test_opt_in_is_not_consumed_as_a_provider_option_value(self):
+        self.assert_forwarded(["--toolchain", "--with-silver", "--check"])
+        self.assertFalse(self.build_record.exists())
+        self.assertFalse((self.project / ".silver").exists())
+
+    def test_opt_in_after_provision_options(self):
+        result = self.invoke("--offline", "--with-silver")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.recorded()["argv"], ["provision", "--toolchain",
+                         str(self.project / "_flow_tools"), "--offline"])
+        self.assertTrue(self.build_record.exists())
+        self.assertTrue((self.project / "scripts/configure-simulation.args").exists())
 
     def test_absent_provider_is_actionable_and_writes_nothing(self):
         self.recorder.unlink()

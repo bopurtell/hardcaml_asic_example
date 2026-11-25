@@ -1,2 +1,0 @@
-FATAL: /home/wayne/devel/jane/hardcaml_asic_example/_flow_results/sram-physical/runs/20261025T034710180883Z_be961b2c/checks/0553f6d19c8f42d28c057fc65ed23510/testbench.v:27: low byte addr=19 expected=b62e got=2f
-       Time: 7727000  Scope: memory_replay.check_word

@@ -245,7 +245,7 @@ def run(args):
                                 'malformed CLI4 execution summary')
                         stage_plan = value.get('plan', {})
                         require(type(stage_plan.get('schema_version')) is int
-                                and stage_plan['schema_version'] == 3
+                                and stage_plan['schema_version'] in (3, 4)
                                 and isinstance(stage_plan.get('stages'), list),
                                 'unsupported execution stage plan')
                         reference = envelope(value.get('methodology'),

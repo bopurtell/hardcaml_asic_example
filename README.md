@@ -1,288 +1,169 @@
-# Hardcaml ASIC development examples
+# Hardcaml ASIC example: controlled FIFO
 
-Hardware projects and external-consumer qualification for `hardcaml_asic` and
-Silver (formerly Hardcaml Workbench). The original design is a controlled FIFO ASIC; the repository
-also includes a program-memory SRAM ASIC and small tool-qualification fixtures.
+A standalone Hardcaml hardware design with a Tiny Tapeout CMOS5L wrapper,
+independent FIFO verification, immutable implementation bundles and named ASIC
+flows. The default target is a 16×8 register-backed FIFO with synchronous
+active-high clear and registered pop response. Silver is optional; neither its
+application nor its OCaml provider SDK is needed for the standalone steps.
 
-**First run on a fresh clone:** with `hardcaml_asic` and the
-[Silver OCaml provider SDK](https://github.com/bopurtell/silver/blob/oxcaml/docs/install.md#install-the-ocaml-provider-sdk)
-installed, run these from this example, in the switch where you installed the
-ASIC libraries:
+The example code is [MIT-licensed](LICENSE). It is an independent project built
+on Hardcaml, not a Jane Street project.
 
-```sh
-./bootstrap.sh
-ag --standalone
-```
+## 1. Clone the example and install a compatible provider
 
-Bootstrap provisions the physical tools, builds the FIFO chip CLI and
-configures the checkout's Standard flow and two simulation suites for Silver.
-For synthesis only, see the
-[Silver quickstart](https://github.com/bopurtell/silver#try-the-asic-example),
-which does not need the Silver OCaml SDK.
-After that, run `ag --standalone`. Silver shows **Project: `hardcaml_asic_example`**.
-Its default launch target is **`controlled_fifo / default`**. The provider on `PATH` supplies execution; the example's own CLI
-supplies its flow catalog, including `standard / balanced / synthesis`.
-For a checkout whose `_flow_tools` was provisioned before this setup step was
-added, run `python3 -B scripts/configure-synthesis.py` to configure synthesis
-without reprovisioning.
-For simulation on an already provisioned checkout:
+Use Linux with Git, opam, Bash, Python 3.9+ and standard Unix utilities. The
+example uses OxCaml; install its system build prerequisites via your distribution.
+Use a separate opam switch if you do not want to change an existing environment.
+
+On Ubuntu, install the host tools:
 
 ```sh
-python3 -B scripts/configure-simulation.py
-silver-simulation-setup check --root "$PWD"  # lists 2 suites / 5 cases
-ag --standalone
+sudo apt update
+sudo apt install -y autoconf bubblewrap build-essential bzip2 ca-certificates curl git \
+  libgmp-dev opam pkg-config python3 rsync unzip xz-utils zlib1g-dev
 ```
 
-Reopen Silver after setup. The suite catalog loads **Controlled FIFO** (`controlled-fifo`)
-and **Memory workloads** (`memory-workloads`) in the background. In
-Testing, focus Catalog, choose a suite and cases, and press `R` to run them with
-the displayed settings. Use `e` to change settings without running, or Enter to
-review and edit inputs for a single launch. Press `d` to
-refresh or retry discovery. After the
-run passes, select its VCD in Artifacts (`w` to view, `e` to export).
-To open a FIFO test's OCaml declaration without running it, select a case
-under **Controlled FIFO** in the Catalog and press `gd`. Silver selects the
-**Editor** workspace and opens this checkout's
-`ip/controlled_fifo/verif/simulation/test_provider.ml` in Cobalt. Press
-**Alt+Left** to return to the same case; another `gd` reuses the editor buffer.
-After changing simulation sources or upgrading a checkout from the old
-`pt8-memory-workloads` suite ID, run `python3 -B scripts/configure-simulation.py --refresh`.
-This rebuilds the manifest in place and leaves the existing companion and
-saved runs unchanged. Launch new memory tests from `memory-workloads`.
-On a Silver build that supports parallel simulation, opt in with
-`python3 -B scripts/configure-simulation.py --max-parallel-runs 2`, then reopen
-Silver. This changes only the simulation companion, without rebuilding if the
-manifest is current. The default is one attempt at a time; cases within a
-single attempt still run in order.
-After configuration, `python3 -B scripts/check-simulation-overlap.py` checks
-real provider overlap in temporary directories without changing Silver history.
-The companion and manifest are machine-local and ignored by Git: a fresh clone
-or a cleanup of ignored files requires setup again. Silver history is separate.
-If Silver was already open when the project was configured for the first time,
-quit it with `q` and reopen it: the running backend caches the ASIC configuration.
-To reopen this example's **prepared** tools and saved session instead, use
-`python3 -B scripts/silver.py open`.
-
-## Where things live
-
-| Location | Owner and purpose |
-| --- | --- |
-| [`ip/controlled_fifo/`](ip/controlled_fifo/) | FIFO RTL, independent model, stimulus, Cyclesim verification, and simulation provider |
-| [`asics/fifo_demo/`](asics/fifo_demo/) | TT wrapper, chip target and flows, CLI, whole-wrapper verification and bundle replay |
-| [`asics/program_memory/`](asics/program_memory/README.md) | Program-memory SRAM chip target, behavioral verification, and physical qualification harness |
-| [`asics/sram_budget/`](asics/sram_budget/README.md) | Three identical RAM requests competing for a chip-level SRAM instance budget |
-| [`tooling_acceptance/timing/`](tooling_acceptance/timing/) | Five-register timing fixture and basic/named-flow/physical API qualification |
-| [`tooling_acceptance/variants/`](tooling_acceptance/variants/README.md) | Parameterized memory constructor and conformance qualification |
-| [`tooling_acceptance/workloads/`](tooling_acceptance/workloads/) | Workload execution/result qualification |
-| [`integration/workbench/`](integration/workbench/) | Composite simulation routing and Workbench integration/qualification |
-| [`scripts/`](scripts/) | Dependency/bootstrap, CLI checks, and development-session entry points |
-| [`acceptance/`](acceptance/README.md) | Retained historical evidence, snapshots and reproduction packages |
-| [`docs/`](docs/) | Guides, migration plans, and historical handoffs/results |
-
-**IP owns its RTL and verification. ASICs own their tops and system verification.**
-Root `verif/` is reserved for genuinely shared verification components when needed;
-it is not a bucket for design-specific checks. See the
-[ownership and storage guide](docs/repository_layout.md) for details.
-
-## Build and verify
-
-Use an already installed compatible `hardcaml_asic` provider. The development
-dependency workflow is exposed by `python3 scripts/asic_dependency.py --help`.
-FIFO's build requires the provider's `hardcaml-asic-starter generate-collection`
-command. `asics/fifo_demo/flows/dune` opts in: add `flow_<id>.ml` beside
-`flow_standard.ml` to register a methodology on build, or add a profile module
-under `<id>/profiles/`. No Dune or default-selection edit is needed.
-`python3 scripts/test_flow_collection.py` exercises this convention on an
-isolated copy of FIFO, including plan and recorded run dispatch without EDA.
-Refresh/install is an explicit separate action; ordinary builds do not provision
-EDA tools. Building the native simulation adapter additionally requires the Silver
-provider SDK (`silver_provider`).
-
-For an existing prepared installation, `python3 -B scripts/silver.py configure-dune`
-sets up checkout-local Dune library discovery once. Then `dune build .` works in
-new shells using that compiler switch; there is no `OCAMLPATH` export to repeat.
-Rerun the configuration if you deliberately change switches or move the checkout.
-
-`asic-dependency.json` selects committed provider
-`4b6bb60562c0133db9e3ccc6b183736e5658a3f0` for explicit **recorded** refreshes.
-See [dependency selection and validation](docs/dependency_commands.md#current-recorded-dependency).
-Changing this record does not upgrade an installed generation or the Workbench
-selection; those continue to use their existing receipts and executable paths.
+Clone the example:
 
 ```sh
-# With the example's ASIC dependency and Silver SDK already prepared:
-dune build -j6 .
-dune build -j6 asics/fifo_demo/cli/chip.exe
-dune runtest -j6 ip/controlled_fifo/verif/cyclesim
-dune build -j6 @@asics/fifo_demo/verif/runtest
-dune runtest -j6 asics/program_memory/verif
-dune runtest -j6 tooling_acceptance/timing/fixture/verif
+git clone --branch oxcaml https://github.com/bopurtell/hardcaml_asic_example.git
+cd hardcaml_asic_example
 ```
 
-`@@DIR/runtest` is the exact nonrecursive alias. `dune runtest DIR` also includes
-descendants; for example `dune runtest asics/fifo_demo/verif` includes bundle replay.
-No directory needs to be named `test/` for Dune verification aliases to work.
-Keep the total job allocation of concurrent commands at or below **20**.
+For a fresh opam installation and switch, run:
 
-**Editing `../hardcaml_asic` itself?** Run `./scripts/build_with_asic_checkout.sh`
-from this checkout to build against those edits. It incrementally builds the
-provider and the example in sequence. Neither step reinstalls the compiler,
-Hardcaml or OxCaml. The example uses a separate build directory in this mode so
-experimenting doesn't replace the chip executable used by prepared Silver.
-Use a development **refresh** only when you want a validated, installed snapshot
-of the provider; it is not necessary on every source edit.
+```sh
+opam init --bare --no-setup
+if ! opam switch list --short | grep -Fxq '5.2.0+ox'; then
+  opam switch create 5.2.0+ox ocaml-variants.5.2.0+ox \
+    --repos ox=git+https://github.com/oxcaml/opam-repository.git,default
+fi
+eval "$(opam env --switch=5.2.0+ox --set-switch)"
+```
 
-PDK-free bundle replay, including generated-Verilog simulation when Icarus is
-available:
+The switch is reused if already present. In the activated switch, install the
+provider directly from the repository and exact committed revision recorded in
+[`asic-dependency.json`](asic-dependency.json). No provider checkout is needed:
+
+```sh
+ASIC_SOURCE=$(python3 -c 'import json; r=json.load(open("asic-dependency.json")); print("git+" + r["repository"] + "#" + r["revision"])')
+opam pin add --no-action hardcaml_asic "$ASIC_SOURCE"
+opam install hardcaml_asic expect_test_helpers_core
+hardcaml-asic-flow --version --json
+```
+
+The installed CLI should advertise contract 4 and `namedflow1: true`. Keep the
+provider's executable and libraries in the same switch. The package version alone
+is not a source-revision stamp. Bootstrap does not reinstall or upgrade the
+selected provider.
+
+## 2. Build and verify the example (no PDK or physical EDA)
+
+Run from the example root, in the activated switch:
+
+```sh
+dune build -j6 @standalone
+```
+
+This builds both chip CLIs and runs the FIFO Cyclesim/model comparison, ASIC
+wrapper, resolution and catalog checks, bundle verification, program-memory
+behavioral tests, and SRAM budget/resource checks. Generated-Verilog replay is
+included when Icarus Verilog (`iverilog` and `vvp`) is available; otherwise
+the replay is explicitly skipped. To require FIFO Verilog replay, install
+Icarus Verilog and run:
 
 ```sh
 dune build -j6 @asics/fifo_demo/verif/bundle/acceptance-strict
-python3 -B scripts/test_ownership_layout.py -v
 ```
 
-The strict alias requires `iverilog` and `vvp`. Ordinary bundle verification reports
-an explicit RTL skip if they are unavailable. Shared CLI/dependency checks remain
-under `dune runtest -j6 scripts`.
+The `@standalone` alias excludes the optional Silver simulation adapter and
+requires no SDK, PDK, Docker or physical EDA. It does not change the default
+whole-tree build.
 
-<a id="project-cli"></a>
+## 3. Inspect, plan and emit (still PDK-free)
 
-## Chip target CLI
+```sh
+CHIP="$PWD/_build/default/asics/fifo_demo/cli/chip.exe"
+"$CHIP" describe --json
+"$CHIP" flow list --json
+mkdir -p _flow_results
+OUTPUT=$(mktemp -d "$PWD/_flow_results/preview.XXXXXX")
+"$CHIP" flow plan --flow standard --profile balanced --endpoint synthesis --json > "$OUTPUT/plan.json"
+IDENTITY=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_identity"])' "$OUTPUT/plan.json")
+"$CHIP" flow emit --flow standard --profile balanced --endpoint synthesis \
+  --expected-plan-identity "$IDENTITY" --results-root "$OUTPUT" --json
+```
 
-From the checkout root, a provider with `hardcaml-asic-targets` can discover
-and invoke the project's standalone chip executables without Silver:
+The plan identifies the exact source/flow selection; emission publishes an
+immutable bundle containing RTL, resolved target configuration and manifest.
+Neither step runs synthesis. Replan after changing source or selected options.
+The FIFO catalog contains `standard/balanced` and `standard/synth_delay`.
+
+## 4. Optional: provision physical tools, run synthesis and read results
+
+Physical execution requires Docker and the provider's pinned LibreLane, TT and
+IHP PDK collateral (allow several GB). Full acceptance also requires Nix/precheck.
+Bootstrap provisions tools only; it does not install OCaml packages, build the
+project or configure Silver by default.
+
+```sh
+TOOLS="$PWD/_flow_tools"
+./bootstrap.sh --toolchain "$TOOLS"
+./bootstrap.sh --toolchain "$TOOLS" --check
+```
+
+Tool selection is `--toolchain PATH`, then `TOOLCHAIN`, then this checkout's
+`_flow_tools/`. The check is read-only. `--offline` and `--no-container` are
+provider options; skipping container checks does not certify physical readiness.
+Run the actual FIFO synthesis through the installed provider:
+
+```sh
+mkdir -p _flow_results
+SESSION=$(mktemp -d "$PWD/_flow_results/headless.XXXXXX")
+python3 -B scripts/headless_flow.py \
+  --project "$CHIP" --provider "$(command -v hardcaml-asic-flow)" \
+  --source-root "$PWD" --results-root "$SESSION/results" --toolchain "$TOOLS" \
+  --flow standard --profile balanced --endpoint synthesis \
+  --stage-timeout 3600 --timeout 7200 --receipt "$SESSION/synthesis.json"
+```
+
+See the [headless flow guide](docs/headless_flow.md) for preview, report and
+reconnect commands, direct CLI execution, and extending to signoff. A successful
+execution is not physical acceptance.
+
+## 5. Optional: Silver integration
+
+Silver is a separate workbench. For synthesis/preparation alone, install Silver
+and run the synthesis configuration; for simulation also install the Silver
+OCaml provider SDK. See [Silver setup and compatibility](docs/silver.md). Existing
+configuration and saved runs are retained. `./bootstrap.sh --with-silver` explicitly
+requests the former combined provision-and-configure behavior; it requires the
+SDK and is not part of standalone setup.
+
+<a id="chip-target-cli"></a>
+
+## Other targets and source layout
+
+| Location | Purpose |
+| --- | --- |
+| [`ip/controlled_fifo/`](ip/controlled_fifo/) | RTL, independent model, stimulus, Cyclesim tests and optional simulation adapter |
+| [`asics/fifo_demo/`](asics/fifo_demo/) | TT top, chip declaration, named flows, CLI and wrapper/bundle replay |
+| [`asics/program_memory/`](asics/program_memory/README.md) | SRAM example with its own target and qualification |
+| [`asics/sram_budget/`](asics/sram_budget/README.md) | Competing requests for a chip-level SRAM budget |
+| [`tooling_acceptance/`](tooling_acceptance/) | Timing, variants and workload fixtures |
+| [`integration/workbench/`](integration/workbench/) | Optional Silver provider integration |
+
+IP owns RTL and component verification; ASICs own their tops and system
+verification. See [repository layout](docs/repository_layout.md) and the
+[documentation index](docs/README.md). The installed `hardcaml-asic-targets list`
+command discovers registered targets from `hardcaml-asic-targets.json`; build the
+selected target's executable before invoking it. For example:
 
 ```sh
 hardcaml-asic-targets list
-hardcaml-asic-targets select --target program_memory
-hardcaml-asic-targets exec --target controlled_fifo -- describe --json
+dune build -j6 asics/program_memory/cli/chip.exe
 hardcaml-asic-targets exec --target program_memory -- flow list --json
 ```
 
-[`hardcaml-asic-targets.json`](hardcaml-asic-targets.json) registers the project's
-entry points; `controlled_fifo` is the default. The program-memory route invokes its own
-`asics/program_memory/cli/chip.exe`. Removing its entry hides it from provider discovery, but
-`dune exec ./asics/program_memory/cli/chip.exe -- flow list --json`
-still works. Each chip owns its hardware declaration and named flows.
-
-**Using the sibling provider:** the recorded revision predates `Chip_target.create`
-and the target catalog. From this project root, build the two registered chip targets
-and use the matching provider for discovery without changing the dependency pin:
-
-```sh
-./scripts/build_with_asic_checkout.sh
-provider="$PWD/../hardcaml_asic/_build/install/default"
-"$provider/bin/hardcaml-asic-targets" list
-chip=_build_asic_dev/default/asics/fifo_demo/cli/chip.exe
-"$chip" list --json
-_build_asic_dev/default/asics/program_memory/cli/chip.exe flow list --json
-OCAMLPATH="$provider/lib" opam exec --switch=5.2.0+ox -- \
-  python3 -B scripts/test_target_catalog.py --provider "$provider/bin/hardcaml-asic-targets"
-```
-
-`chip list --json` lists the FIFO CLI's built-in variants and adds targets from
-`hardcaml-asic-targets.json` with the scaffold's `default` variant. Listing
-doesn't build them. To use a newly registered target, build its catalog
-executable in the same Dune context as the configured FIFO CLI. The FIFO CLI
-delegates commands for that chip to its executable.
-The same `--chip ID` and `--variant ID` selectors apply to `flow list`, `describe`,
-`plan`, `emit`, and `run`. Omitting both selects the original FIFO. Omitting only
-the variant selects that chip's default.
-
-| Chip | Variant | Named flow / default profile | Latest endpoint |
-| --- | --- | --- | --- |
-| `controlled_fifo` (default) | `default` | `standard` / `balanced` | `signoff` |
-| `program_memory` | `default` | `stock256-r0` / `qualification` | `timing` |
-| `sram_budget` | `two_slot` (default), `three_slot` | `standard` / `balanced` | `synthesis` |
-
-To inspect the three-slot design without starting any EDA tools:
-
-```sh
-dune build asics/fifo_demo/cli/chip.exe
-chip=_build/default/asics/fifo_demo/cli/chip.exe
-"$chip" list --json
-"$chip" flow plan --chip sram_budget --variant three_slot --endpoint synthesis --json > /tmp/budget-plan.json
-jq '{project_name, variant: (.bundle_manifest | fromjson | .hardware_variant.assignments)}' /tmp/budget-plan.json
-"$chip" flow emit --chip sram_budget --variant three_slot --endpoint synthesis \
-  --expected-plan-identity "$(jq -r .plan_identity /tmp/budget-plan.json)" --json
-```
-
-The two-slot bundle implements `bank2` with flops; the three-slot bundle maps
-all three banks to stock SRAM. Their bundles and plan identities differ. Building
-the multi-chip CLI requires the `hardcaml_asic` macro-limit API and schema-1
-named synthesis planner; running a budget plan requires `sram_synthesis1` on
-the execution provider. See [the SRAM budget example](asics/sram_budget/README.md)
-for behavioral replay and setup against the sibling provider checkout.
-
-```sh
-dune exec -j6 asics/fifo_demo/cli/chip.exe -- describe --json
-dune exec -j6 asics/fifo_demo/cli/chip.exe -- flow list --json
-dune exec -j6 asics/fifo_demo/cli/chip.exe -- flow plan \
-  --flow standard --profile balanced --endpoint synthesis --json
-```
-
-The FIFO flow catalog supplies `standard` with `balanced` and `synth_delay`
-profiles. Planning/emission does not launch physical EDA. Physical execution
-remains an explicit request with a selected provider/toolchain and expected plan
-identity. The source root is still the repository root containing `dune-project`
-and `asic-dependency.json`, not the nested ASIC directory.
-
-The FIFO is 16×8, register-backed, with synchronous active-high clear and a
-registered pop response. See its [public interface](ip/controlled_fifo/rtl/controlled_fifo.mli)
-for behavior and its [ASIC declaration](asics/fifo_demo/project/fifo_chip.ml) for
-target, timing, source inventory, and pin assignments.
-
-For SRAM selection/operations and retained physical evidence, start with
-[`asics/program_memory/README.md`](asics/program_memory/README.md).
-
-## Silver and local storage
-
-On a prepared and published checkout, run `python3 -B scripts/silver.py open`
-to use Silver in one terminal. Quitting stops that session's daemon. See
-[Everyday Silver](docs/workbench_main.md) for setup and persistent-server mode.
-
-Silver configuration is stored in `.silver/`, including the optional
-`silver.sexp` project settings and three companions:
-
-* `silver-preparation.sexp`: build current source and emit its bundle.
-* `silver-asic.sexp`: selected project/provider executables, physical
-  toolchain, result locations, and execution budget.
-* `silver-simulation.sexp`: selected simulation provider and budgets.
-
-The preparation build target now names `asics/fifo_demo/cli/chip.exe`. The
-ASIC/simulation companions retain their existing pinned executables; moving source
-does not rebuild or upgrade those selections.
-
-Both `silver*.sexp` and `hardcaml-workbench*.sexp` are recognized at the root,
-in `.silver/`, and in `.workbench/`. The canonical names in `.silver/` take
-precedence, but only if all existing copies have identical bytes. Setup retains
-existing files and rejects conflicting copies.
-To migrate manually, stop Silver and all setup processes, check that any copies
-of each configuration have identical bytes, then move the old files to `.silver/`
-and rename their `hardcaml-workbench` prefix to `silver`. Do not overwrite
-different existing bytes. Keep project-relative paths inside the files unchanged.
-Retain `.dev/workbench-main`, ownership receipts, results, and prepared generations
-at their existing paths; their hashes and absolute paths remain valid.
-Do not rename immutable captured files or interrupt a pending publication;
-recover it first using its original store and receipts.
-
-Local storage roles:
-
-* `.dev/`: installed development dependencies, captured provider generations, and
-  setup bookkeeping; older experiments/results also remain here historically.
-* `_flow_tools/`: provisioned runtime, PDK and tool collateral.
-* `_flow_results/`: default generated bundles and execution evidence.
-* `_build*/`: disposable Dune build trees, ignored by Git.
-
-## Migration and historical documentation
-
-The [chip target migration notes](docs/repository_layout.md#chip-target-migration-wb-082)
-map declaration and executable names, describe clock ownership, and list compatibility aliases.
-
-The [migration plan and execution record](docs/migration_plans/ownership_layout.md)
-contains scope, policies, verification, and follow-up work. The
-[layout guide](docs/repository_layout.md) maps old paths to current owners.
-
-Older `docs/pt7*`, `docs/pt8*`, and acceptance snapshots describe the paths and
-identities that actually ran. The [archived root README](docs/archive/controlled_fifo_legacy_readme.md)
-preserves the prior detailed usage/history; use the current layout map when
-adapting its commands. Historical run evidence is not rewritten by source moves.
+Generated builds, tools, results and local Silver configuration are separate
+from source. Keep the total concurrent build job allocation at or below 20.

@@ -1,3 +1,0 @@
-; Authored harnesses live with their owners; all retained evidence (including
-; pt7named, resource-inspector, and resource-measurements) must stay unbuilt.
-(data_only_dirs *)

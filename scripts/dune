@@ -72,9 +72,10 @@
 
 (rule
  (alias runtest)
- (deps ../asic-dependency.json ../dune-project ../README.md
+ (deps git_fixture.py ../asic-dependency.json ../dune-project ../README.md ../hardcaml-asic-targets.json
        (source_tree ../ip/controlled_fifo/rtl)
        (source_tree ../asics/fifo_demo/cli) (source_tree ../asics/fifo_demo/project) (source_tree ../asics/fifo_demo/flows)
        (source_tree ../asics/fifo_demo/rtl) (source_tree ../asics/program_memory/project) (source_tree ../asics/program_memory/cli)
        ../asics/program_memory/README.md ../asics/sram_budget/dune ../asics/sram_budget/sram_budget.ml)
- (action (run python3 -B %{dep:test_chip_routing.py} %{exe:../asics/fifo_demo/cli/chip.exe} %{workspace_root})))
+ (action (run python3 -B %{dep:test_chip_routing.py} %{exe:../asics/fifo_demo/cli/chip.exe}
+              %{exe:../asics/fifo_demo/verif/bundle/export_trace.exe} %{workspace_root})))

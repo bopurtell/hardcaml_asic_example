@@ -1,2 +1,0 @@
-FATAL: /home/wayne/devel/jane/hardcaml_asic_example/acceptance/sram/cfd39c58/replay.v:27: low byte addr=19 expected=b62f got=xx
-       Time: 7727000  Scope: memory_replay.check_word

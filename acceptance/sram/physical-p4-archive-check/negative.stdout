@@ -1,2 +1,0 @@
-FATAL: /tmp/opencode/sram-final-archive-1_0qrz5t/physical-p4/postchecks/0553f6d19c8f42d28c057fc65ed23510/testbench.v:27: low byte addr=19 expected=b62e got=2f
-       Time: 7727000  Scope: memory_replay.check_word

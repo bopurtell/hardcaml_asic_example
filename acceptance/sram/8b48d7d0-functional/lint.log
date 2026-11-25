@@ -1,9 +1,0 @@
-%Warning-UNUSEDSIGNAL: /home/wayne/devel/jane/hardcaml_asic_example/_flow_results/sram/runs/20261024T225434707093Z_8b48d7d0/project/src/tt_um_program_memory.v:53:16: Bits of signal are not used: 'signal_wire_3'[7:3]
-                                                                                                                                                                    : ... note: In instance 'tt_um_program_memory'
-   53 |     wire [7:0] signal_wire_3;
-      |                ^~~~~~~~~~~~~
-                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.046
-                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
-- V e r i l a t i o n   R e p o r t: Verilator 5.046 2026-02-28 rev v5.046
-- Verilator: Built from 0.228 MB sources in 109 modules, into 0.012 MB in 3 C++ files needing 0.000 MB
-- Verilator: Walltime 0.009 s (elab=0.001, cvt=0.002, bld=0.000); cpu 0.009 s on 1 threads; allocated 21.680 MB

@@ -148,18 +148,18 @@ class OwnershipLayout(unittest.TestCase):
     def test_independent_provider_import_closure(self):
         # Copy the same minimal hierarchy used by fresh captures, then import it
         # in a separate interpreter to catch accidental imports from the checkout.
-        names = ('integration/workbench/pt8_workbench_provider.py',
-                 'integration/workbench/pt8_workbench_runner.py', 'integration/workbench/workbench_paths.py',
+        names = ('integration/workbench/memory_provider.py',
+                 'integration/workbench/memory_runner.py', 'integration/workbench/workbench_paths.py',
                  'integration/workbench/workbench_provider.py', 'integration/workbench/wire.py',
-                 'tooling_acceptance/workloads/controls/pt8_workloads.py',
-                 'tooling_acceptance/variants/controls/pt8_acceptance.py', 'scripts/workbench_git.py')
+                 'tooling_acceptance/workloads/support/memory_workload.py',
+                 'tooling_acceptance/workloads/support/command_receipts.py', 'scripts/workbench_git.py')
         with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory:
             root = Path(directory)
             for name in names:
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes((ROOT / name).read_bytes())
-            for name in ('pt8_workbench_provider.py', 'workbench_provider.py'):
+            for name in ('memory_provider.py', 'workbench_provider.py'):
                 result = subprocess.run([sys.executable, '-B', str(root / 'integration/workbench' / name), '--help'],
                     cwd=root, env=dict(os.environ, PYTHONPATH='', PYTHONDONTWRITEBYTECODE='1'),
                     capture_output=True, text=True, timeout=10)

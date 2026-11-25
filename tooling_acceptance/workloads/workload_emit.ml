@@ -26,7 +26,7 @@ let project ~ignored_address checked requirement =
     end in
     Project.create ~name:"pt8_workload" ~source_inputs:(Variant_memory.source_inputs @
       ["tooling_acceptance/workloads/dune"; "tooling_acceptance/workloads/workload_emit.ml"])
-      ~metadata:{ title = "PT8 workload"; author = "hardcaml_asic_example"
+      ~metadata:{ title = "Memory workload"; author = "hardcaml_asic_example"
                 ; description = "Direct latency-one workload adapter" }
       ~design:(module D)
       ~target:{ harness = Tiny_tapeout { tiles = T6x4 }; technology = Technology.ihp_sg13cmos5l }

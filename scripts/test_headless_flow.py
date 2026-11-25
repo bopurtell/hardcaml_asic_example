@@ -41,7 +41,7 @@ elif a[0] == 'stages':
     (root/'done').write_text('done')
     identity = a[a.index('--expected-plan-identity')+1]
     emit(dict(attempt_id='stream', status='completed', exit_code=0, occurrences=[],
-              plan=dict(schema_version=3, stages=['synthesis']),
+              plan=dict(schema_version=int(os.environ.get('STAGE_PLAN_VERSION', '4')), stages=['synthesis']),
               methodology=dict(contract='hardcaml-asic.methodology-execution-reference', schema_version=1,
                                attempt_id='stream', plan_identity=identity, expected_plan_identity=identity,
                                snapshot_path=str(root/'explicit snapshot.json'))))
@@ -317,6 +317,15 @@ finally:
         self.receipt.unlink()
         provider.write_text(provider.read_text().replace('version=4', 'version=5'))
         self.invoke_client(expected=2)
+
+    def test_stage_plan_version_compatibility(self):
+        self.setup_client()
+        self.env['STAGE_PLAN_VERSION'] = '3'
+        self.invoke_client()
+        self.receipt.unlink()
+        self.env['STAGE_PLAN_VERSION'] = '5'
+        self.invoke_client(expected=2)
+        self.assertIn('unsupported execution stage plan', self.receipt.read_text())
 
     def test_stale_expected_identity_zero_launch(self):
         self.setup_client()

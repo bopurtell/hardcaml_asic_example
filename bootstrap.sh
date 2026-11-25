@@ -14,7 +14,27 @@ if [[ $script_dir == "${BASH_SOURCE[0]}" ]]; then
 fi
 project_root=$(CDPATH= cd -- "$script_dir" && pwd -P)
 default_tools=${TOOLCHAIN:-$project_root/_flow_tools}
+# Silver configuration is opt-in. All remaining arguments belong to provision.
+silver=false
+args=()
+while (($#)); do
+    case $1 in
+        --with-silver) silver=true ;;
+        --toolchain|--python)
+            # A value can itself start with '--'; preserve provider argv.
+            args+=("$1")
+            shift
+            (($#)) || break
+            args+=("$1") ;;
+        *) args+=("$1") ;;
+    esac
+    shift
+done
+set -- "${args[@]}"
 provision=(hardcaml-asic-flow provision --toolchain "$default_tools" "$@")
+if ! $silver; then
+    exec "${provision[@]}"
+fi
 tools=$default_tools
 # Only configure after a provisioning run. Delegate informational modes and
 # unknown arguments directly, retaining the installed CLI's diagnostics/status.

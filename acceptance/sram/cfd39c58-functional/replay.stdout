@@ -1,2 +1,0 @@
-PASS memory RTL: load/read 256x16, staged/disabled hold, reset retains RAM; checks=1280
-/home/wayne/devel/jane/hardcaml_asic_example/acceptance/sram/cfd39c58-functional/replay.v:71: $finish called at 25668000 (1ps)

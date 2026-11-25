@@ -1,0 +1,11 @@
+; Standalone hardware build and verification, without the Silver adapter or EDA.
+(alias
+ (name standalone)
+ (deps
+  asics/fifo_demo/cli/chip.exe
+  asics/program_memory/cli/chip.exe
+  (alias ip/controlled_fifo/verif/cyclesim/runtest)
+  (alias asics/fifo_demo/verif/runtest)
+  (alias asics/fifo_demo/verif/bundle/runtest)
+  (alias asics/program_memory/verif/runtest)
+  (alias asics/sram_budget/runtest)))

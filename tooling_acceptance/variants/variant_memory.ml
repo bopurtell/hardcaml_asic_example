@@ -39,7 +39,7 @@ let shape checked =
      || not (String.equal (Hardware_variant.Schema.schema_id (Hardware_variant.schema checked)) "pt8_memory.v1")
      || not (String.equal (Hardware_variant.identity checked) (Hardware_variant.identity expected))
      || not (List.mem [128; 256] depth ~equal:Int.equal) || width <> 16 || read_latency <> 1
-  then Or_error.error_string "Unsupported PT8 memory tuple"
+  then Or_error.error_string "Unsupported memory variant"
   else Ok (depth, width, read_latency)
 ;;
 
@@ -105,7 +105,7 @@ let project ?(core_ports = false) ?(ignore_depth = false) checked requirement =
         end in (module D : Project.Design)
     in
     Project.create ~name:"pt8_memory" ~source_inputs
-      ~metadata:{ title = "PT8 memory"; author = "hardcaml_asic_example"
+      ~metadata:{ title = "Parameterized memory"; author = "hardcaml_asic_example"
                 ; description = "Checked depth128/256 width16 latency1 memory" }
       ~design
       ~target:{ harness = Tiny_tapeout { tiles = T6x4 }; technology = Technology.ihp_sg13cmos5l }

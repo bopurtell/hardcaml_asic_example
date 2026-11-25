@@ -8,12 +8,15 @@ import subprocess
 import sys
 import tempfile
 
+from git_fixture import fixture
+
 EXE = Path(sys.argv[1]).resolve(strict=True)
-ROOT = Path(subprocess.check_output(['git', '-C', sys.argv[2], 'rev-parse', '--show-toplevel'], text=True).strip())
+EXPORTER = Path(sys.argv[2]).resolve(strict=True)
+SOURCE = Path(sys.argv[3]).resolve(strict=True)
 
 
 def cli(*args, ok=True):
-    p = subprocess.run([EXE, *args, '--json'], cwd=ROOT, text=True, capture_output=True)
+    p = subprocess.run([EXE, *args, '--json'], cwd=ROOT, env=ENV, text=True, capture_output=True)
     if not ok:
         assert p.returncode and not p.stdout, (args, p)
         return p.stderr
@@ -27,9 +30,23 @@ def check_clock_and_ip(manifest, period_ns, *, fifo_ip):
     assert math.isclose(settings['CLOCK_PERIOD']['value'], period_ns)
     sources = {entry['path'] for entry in manifest['source_inputs']}
     assert ('ip/controlled_fifo/rtl/controlled_fifo.ml' in sources) == fifo_ip
+    assert manifest['source_revision'] == REVISION
+    assert all(entry['git_status'] == '' for entry in manifest['source_inputs'])
 
 
 with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
+    ROOT = Path(directory) / 'source'
+    fifo_inputs = subprocess.check_output([EXPORTER, '--inputs'], text=True).splitlines()
+    ENV = fixture(SOURCE, ROOT, fifo_inputs + [
+        'hardcaml-asic-targets.json',
+        'asics/program_memory/project/dune',
+        'asics/program_memory/project/program_memory.ml',
+        'asics/program_memory/README.md',
+        'asics/sram_budget/dune',
+        'asics/sram_budget/sram_budget.ml',
+    ])
+    REVISION = subprocess.check_output(['git', '-C', ROOT, 'rev-parse', 'HEAD'],
+                                       env=ENV, text=True).strip()
     store = Path(directory) / 'store'
     catalog = cli('list')
     assert cli('chip', 'list') == catalog  # pre-migration invocation
@@ -57,7 +74,7 @@ with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
     (project / 'hardcaml-asic-targets.json').write_text(json.dumps(
         {'schema_version': 1, 'default_target': 'new_chip', 'targets': [entry]}))
     def routed(*args):
-        return subprocess.run([router, *args], cwd=project, capture_output=True, text=True)
+        return subprocess.run([router, *args], cwd=project, env=ENV, capture_output=True, text=True)
     assert json.loads(routed('chip', 'list', '--json').stdout)['chips'][-1]['id'] == 'new_chip'
     argv = ['flow', 'describe', '--flow', 'standard', '--chip', 'new_chip', '--variant', 'default', '--json']
     missing = routed(*argv)
@@ -139,3 +156,4 @@ with tempfile.TemporaryDirectory(prefix='chip-routing-') as directory:
         assert 'Unknown chip' in cli('flow', command, '--chip', 'missing', ok=False)
     cli('emit', '--variant', 'three_slot', ok=False)
     cli('emit', '--chip', 'controlled_fifo', '--chip', 'sram_budget', ok=False)
+    print('PASS chip routing, resource selection and bundle publication from isolated Git fixture')

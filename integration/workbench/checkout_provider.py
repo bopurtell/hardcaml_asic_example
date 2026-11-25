@@ -27,7 +27,7 @@ SOURCE_PATHS = {
     for suite in router.SUITES
 }
 SOURCE_PATHS[router.MEMORY_SUITE] += (
-    'asics/fifo_demo/project', 'asics/fifo_demo/flows', 'tooling_acceptance/variants/controls/pt8_acceptance.py',
+    'asics/fifo_demo/project', 'asics/fifo_demo/flows', 'tooling_acceptance/workloads/support/command_receipts.py',
 )
 
 

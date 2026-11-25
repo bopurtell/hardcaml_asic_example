@@ -34,7 +34,7 @@ SUITE_PATHS = {
         'scripts/workbench_git.py'),
     MEMORY_SUITE: ('dune-project', 'tooling_acceptance/variants', 'tooling_acceptance/workloads',
          'integration/workbench/wire.py', 'integration/workbench/workbench_provider.py',
-         'integration/workbench/pt8_workbench_provider.py', 'integration/workbench/pt8_workbench_runner.py',
+         'integration/workbench/memory_provider.py', 'integration/workbench/memory_runner.py',
          'integration/workbench/workbench_paths.py', 'scripts/workbench_git.py'),
 }
 

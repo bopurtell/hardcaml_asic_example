@@ -17,7 +17,7 @@ import tempfile
 import uuid
 
 ROOT = Path(__file__).resolve().parent.parent
-REPOSITORY = "https://github.com/LeEmperor/hardcaml_asic.git"
+REPOSITORY = "https://github.com/bopurtell/hardcaml_asic.git"
 OWNER = "hardcaml_asic_example dependency store v1\n"
 EXCLUDED = {".git", "_build", ".toolchain", ".dev", "__pycache__"}
 PROBE = """open Hardcaml_asic
@@ -228,10 +228,18 @@ def select_layout(layouts, exists, message):
     return found[0]
 
 
+def interface_paths(layouts, layout, exists):
+    paths = layouts[layout]
+    # Current releases expose Project as an alias of Chip_target. Older
+    # snapshots still carry project.mli; verify the actual defining interface.
+    chip = paths["project"].replace("project.mli", "chip_target.mli")
+    return dict(paths, project=chip) if exists(chip) else paths
+
+
 def api_check(entries):
     layout = select_layout(SOURCE_LAYOUTS, entries.__contains__,
                            "expected hardcaml_asic source with renamed public API")
-    paths = SOURCE_LAYOUTS[layout]
+    paths = interface_paths(SOURCE_LAYOUTS, layout, entries.__contains__)
     required = {"dune-project": b"hardcaml_asic", paths["elaborated_project"]: b"type t",
                 paths["resolved"]: b"elaborated_project : Elaborated_project.t",
                 paths["bundle"]: b"?simulation_project:",
@@ -405,7 +413,7 @@ export {variable}
 def validate_install(generation, work, runner, jobs=20):
     package = generation / "lib/hardcaml_asic"
     layout = select_layout(INSTALL_LAYOUTS, lambda name: (package / name).is_file(), "incomplete installation")
-    paths = INSTALL_LAYOUTS[layout]
+    paths = interface_paths(INSTALL_LAYOUTS, layout, lambda name: (package / name).is_file())
     for relative in ("META", "dune-package", paths["elaborated_project"], paths["resolved"], paths["bundle"],
                      paths["project"],
                      "flow/hardcaml_asic_flow/__init__.py",
@@ -515,7 +523,7 @@ def refresh(source, mode, store, record, runner=run, remove_source_build_overrid
                    "removed_library_paths": removed_paths,
                    "source_state": ("committed bytes; working-tree state not inspected" if mode == "recorded"
                                     else "captured bytes; not an atomic checkout or a clean-tree claim"),
-                   "identity_scope": "local refresh receipt, NOT P6.5 source stamp",
+                   "identity_scope": "local refresh receipt, not a release source stamp",
                    "refreshed_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
         (generation / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
         known = [p for p in generations.iterdir() if p.is_dir() and not p.is_symlink()]

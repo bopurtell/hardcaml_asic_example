@@ -50,11 +50,11 @@ class CheckoutProvider(unittest.TestCase):
                     (destination / 'fixture.ml').write_text('fixture source\n')
                 else:
                     names.add(name)
-        names.update(('integration/workbench/pt8_workbench_provider.py',
-                      'integration/workbench/pt8_workbench_runner.py',
+        names.update(('integration/workbench/memory_provider.py',
+                      'integration/workbench/memory_runner.py',
                       'integration/workbench/workbench_paths.py',
-                      'tooling_acceptance/workloads/controls/pt8_workloads.py',
-                      'tooling_acceptance/variants/controls/pt8_acceptance.py'))
+                      'tooling_acceptance/workloads/support/memory_workload.py',
+                      'tooling_acceptance/workloads/support/command_receipts.py'))
         for name in names:
             destination = self.root / name
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -369,13 +369,13 @@ class CheckoutProvider(unittest.TestCase):
         path.unlink()
         self.assertTrue(checkout.drift(self.manifest, 'controlled-fifo'))
 
-    def test_pt8_dependency_model_and_transitive_source_coverage(self):
+    def test_memory_dependency_model_and_transitive_source_coverage(self):
         self.prepare()
         paths = (self.generation / 'lib/library.a',
                  self.generation / 'bin/hardcaml-asic-flow',
                  self.models / checkout.MODELS[0],
                  self.root / 'asics/fifo_demo/project/fixture.ml',
-                 self.root / 'tooling_acceptance/variants/controls/pt8_acceptance.py',
+                 self.root / 'tooling_acceptance/workloads/support/command_receipts.py',
                  self.build / 'default' / checkout.TARGETS[2])
         for path in paths:
             original = path.read_bytes()
@@ -402,9 +402,9 @@ class CheckoutProvider(unittest.TestCase):
         self.prepare()
         self.assertEqual(checkout.drift(self.manifest, 'controlled-fifo'), [])
 
-    def test_pt8_runner_executes_selected_binaries_in_explicit_persistent_root(self):
-        import pt8_workbench_runner as runner
-        import pt8_workloads as producer
+    def test_memory_runner_executes_selected_binaries_in_explicit_persistent_root(self):
+        import memory_runner as runner
+        import memory_workload as producer
         self.prepare()
         emitter = self.build / 'default' / checkout.TARGETS[2]
         inspector = self.generation / 'bin/hardcaml-asic-flow'
@@ -434,7 +434,7 @@ class CheckoutProvider(unittest.TestCase):
                 self.assertEqual(emit['argv'][:2], [str(emitter), str(self.root)])
                 self.assertEqual(inspect['argv'][0], str(inspector))
                 self.assertEqual(inspect['exit_code'], 0)
-        self.assertFalse((self.root / '.dev/asic-pt8-workbench').exists())
+        self.assertFalse((self.root / '.dev/memory-workloads').exists())
 
     def test_exec_retains_pid_signal_cancellation_without_terminal_events(self):
         self.prepare()
@@ -457,7 +457,7 @@ class CheckoutProvider(unittest.TestCase):
                 child.kill()
                 child.communicate()
 
-    def test_pt8_cancellation_reaps_emitter_and_keeps_partial_events(self):
+    def test_memory_cancellation_reaps_emitter_and_keeps_partial_events(self):
         marker = self.directory / 'emitter.pid'
         def build_waiting_emitter(*args, **kwargs):
             self.build_fake(*args, **kwargs)
@@ -474,7 +474,7 @@ class CheckoutProvider(unittest.TestCase):
             deadline = time.monotonic() + 8
             while not marker.exists():
                 if time.monotonic() >= deadline or child.poll() is not None:
-                    self.fail('PT8 emitter did not start')
+                    self.fail('memory workload emitter did not start')
                 time.sleep(.01)
             emitter_pid = int(marker.read_text())
             child.send_signal(signal.SIGTERM)

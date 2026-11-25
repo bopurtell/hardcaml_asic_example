@@ -11,8 +11,9 @@
 
 (rule
  (alias runtest)
- (deps dune sram_budget.ml emit.ml ../../dune-project ../../asic-dependency.json)
+ (deps dune sram_budget.ml emit.ml ../../dune-project ../../asic-dependency.json
+       ../../scripts/git_fixture.py)
  (action
-  (run python3 %{dep:check_budget.py} %{exe:emit.exe}
+  (run python3 -B %{dep:check_budget.py} %{exe:emit.exe}
    %{lib:hardcaml_asic:META} %{workspace_root}
    %{dep:verif/bank_replay.v})))

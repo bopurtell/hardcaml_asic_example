@@ -1,7 +1,7 @@
 (executable
  (name workload_emit)
  (modules workload_emit)
- (libraries pt8_adapter core hardcaml_asic)
+ (libraries variant_adapter core hardcaml_asic)
  (preprocess (pps ppx_jane ppx_hardcaml)))
 
 (executable
