@@ -5,9 +5,12 @@ import datetime
 import json
 from pathlib import Path
 import shutil
+import sys
 
 from real_tools import ROOT, EVIDENCE, dump
 from record_command import sha
+sys.path.insert(0, str(ROOT / "integration/workbench"))
+from config_location import copies
 
 
 def identity(path):
@@ -50,7 +53,8 @@ def main():
     for f in manifest["source_inputs"]:
         assert sha(ROOT / f["path"]) == f["sha256"], f["path"]
     protected = {str(p.relative_to(ROOT)): identity(p) for p in
-                 [ROOT / ".gitignore", ROOT / "README.md", ROOT / "hardcaml-workbench-asic.sexp",
+                 [ROOT / ".gitignore", ROOT / "README.md",
+                  *copies(ROOT, "silver-asic.sexp"),
                   ROOT / "docs/resource_measurements.md", ROOT / "scripts/check_resource_measurements.py"]}
     pointers = {str(p.relative_to(ROOT)): str(p.readlink()) for p in sorted((ROOT / ".dev").glob("*/current")) if p.is_symlink()}
     dump(a.output / "protected-closeout-observation.json", {"files": protected, "old_provider_pointers": pointers,

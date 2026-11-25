@@ -2,9 +2,9 @@
 
 The native project-owned `test_provider.exe` adapter starts the existing standalone
 `fifo_sim.exe` with the same arguments as the retained Python reference provider.
-Only the adapter links `hardcaml_workbench_provider` (`Wire`, `Validation`, `Runner`);
+Only the adapter links `silver_provider` (`Wire`, `Validation`, `Runner`);
 the library handles protocol validation and event plumbing, not tests or checkers.
-The simulator and ordinary CLI/Dune tests remain independent of Workbench.
+The simulator and ordinary CLI/Dune tests remain independent of Silver.
 
 The simulator uses the real `Controlled_fifo` Cyclesim
 DUT and `Fifo_test_support.directed` / regression traffic with the independent
@@ -52,7 +52,7 @@ python3 scripts/install-fifo-simulation.py \
   --simulator /tmp/opencode/native-provider-example/default/ip/controlled_fifo/verif/simulation/fifo_sim.exe
 ```
 
-Builds require the separately packaged `hardcaml_workbench_provider` library.
+Builds require the separately packaged `silver_provider` library.
 For development on this machine, consume the persistent package prefix through
 `OCAMLPATH="$PWD/.dev/workbench-provider-sdk/lib"` when building from the project
 root; no global opam switch installation is required. The standalone simulator
@@ -61,7 +61,7 @@ provider package first; this development package is not yet published to opam.
 
 The helper copies only `test_provider.exe` and `fifo_sim.exe` into a new
 persistent `.dev/fifo-simulation/<generation>/` before adopting the root companion
-`hardcaml-workbench-simulation.sexp`. Ownership is recorded by exact config SHA256
+`silver-simulation.sexp`. Ownership is recorded by exact config SHA256
 in `.dev/fifo-simulation-install.json`. Missing ownership or any config edit is
 refused before build/install by default. ASIC configuration and results are never accessed.
 Old generations remain available to already-running sessions. Discovery and run

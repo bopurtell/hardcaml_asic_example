@@ -24,7 +24,7 @@ class ConfigureSimulation(unittest.TestCase):
         self.store = self.root / '.dev/workbench-main'
         self.manifest = self.store / 'simulation/manifest.json'
         self.manifest.parent.mkdir(parents=True)
-        self.config = self.root / '.workbench/hardcaml-workbench-simulation.sexp'
+        self.config = self.root / '.silver/silver-simulation.sexp'
         self.config.parent.mkdir()
         self.interpreter = Path(sys.executable).resolve().with_name('python3')
         if not self.interpreter.is_file():
@@ -139,14 +139,18 @@ class ConfigureSimulation(unittest.TestCase):
 
     def test_parallelism_preserves_mirrored_and_foreign_configs(self):
         self.write_manifest(installed=True)
-        other = self.root / self.config.name
         original = self.config.read_bytes()
-        other.write_bytes(original)
-        with self.assertRaisesRegex(RuntimeError, 'two configuration copies'):
+        paths = setup.config_location.candidate_paths(self.root, self.config.name)
+        for other in paths[1:]:
+            other.parent.mkdir(exist_ok=True)
+            other.write_bytes(original)
+        with self.assertRaisesRegex(RuntimeError, 'multiple configuration copies'):
             setup.main(['--max-parallel-runs', '2'])
-        self.assertEqual(self.config.read_bytes(), original)
-        self.assertEqual(other.read_bytes(), original)
-        other.unlink()
+        with self.assertRaisesRegex(RuntimeError, 'multiple configuration copies'):
+            setup.main(['--refresh', '--max-parallel-runs', '2'])
+        self.assertEqual([path.read_bytes() for path in paths], [original] * 6)
+        for other in paths[1:]:
+            other.unlink()
         self.write_config(self.root / 'custom_provider.py')
         with self.assertRaisesRegex(RuntimeError, 'another provider'):
             setup.main(['--max-parallel-runs', '2'])

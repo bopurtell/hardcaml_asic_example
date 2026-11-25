@@ -96,7 +96,7 @@ class MainTest(unittest.TestCase):
         self.assertFalse((self.store / 'project').exists())
         for kind in main.KINDS:
             self.assertEqual(main.companion(self.root, kind).read_bytes(), self.originals[kind])
-        fields = dict(main.parse((Path(value['selection']) / 'config/hardcaml-workbench-asic.sexp').read_text()))
+        fields = dict(main.parse((Path(value['selection']) / 'config/silver-asic.sexp').read_text()))
         self.assertEqual(fields['project_executable'], str(self.root / '_build/default' / main.TARGETS[0]))
         self.assertEqual(fields['provider_executable'], str(self.asic / 'bin/hardcaml-asic-flow'))
         self.assertTrue(fields['results_root'].startswith(str(self.root / '_flow_results/workbench')))
@@ -107,9 +107,11 @@ class MainTest(unittest.TestCase):
             GIT_DIR='wrong', GIT_WORK_TREE='wrong', GIT_COMMON_DIR='wrong',
             GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='x', GIT_CONFIG_VALUE_0='y',
             PT8_PROJECT_ROOT='copied', HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT='6', OMP_NUM_THREADS='96',
+            SILVER_TRACE_WAVEFORM_PREPARATION='1', HARDCAML_WORKBENCH_DIAGNOSTICS='/old',
             SSH_AUTH_SOCK='/temporary/agent', TMUX='/temporary/tmux'))
         for name in ('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_CONFIG_COUNT',
-                     'GIT_CONFIG_KEY_0', 'GIT_CONFIG_VALUE_0', 'PT8_PROJECT_ROOT', 'HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT'):
+                     'GIT_CONFIG_KEY_0', 'GIT_CONFIG_VALUE_0', 'PT8_PROJECT_ROOT', 'HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT',
+                     'SILVER_TRACE_WAVEFORM_PREPARATION', 'HARDCAML_WORKBENCH_DIAGNOSTICS'):
             self.assertNotIn(name, env)
         self.assertEqual(env['OCAMLPATH'], str(self.asic / 'lib') + ':' + str(self.sdk / 'lib'))
         self.assertEqual(env['OMP_NUM_THREADS'], '1')
@@ -132,6 +134,43 @@ class MainTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'unknown root companion edit'):
             self.publish()
         self.assertEqual(main.companion(self.root, 'asic').read_bytes(), b'user edit')
+
+    def test_legacy_prepared_selection_survives_config_filename_migration(self):
+        value = self.prepare()
+        config_dir = Path(value['selection']) / 'config'
+        for kind in main.KINDS:
+            name = 'silver-' + kind + '.sexp'
+            old = main.config_location.legacy_name(name)
+            (config_dir / name).rename(config_dir / old)
+            live = main.companion(self.root, kind)
+            legacy = self.root / '.workbench' / old
+            legacy.parent.mkdir(exist_ok=True)
+            live.rename(legacy)
+        main.verify_install(self.root, self.store)
+        self.publish()
+        main.verify_install(self.root, self.store, published=True)
+        for kind in main.KINDS:
+            name = 'silver-' + kind + '.sexp'
+            live = main.companion(self.root, kind)
+            live.rename(self.root / '.silver' / name)
+        main.verify_install(self.root, self.store, published=True)
+        self.publish()
+        self.file(self.root / '.workbench/hardcaml-workbench-asic.sexp', b'conflict')
+        with self.assertRaisesRegex(RuntimeError, 'Conflicting configuration'):
+            self.publish()
+
+    def test_publish_all_six_mirrored_paths(self):
+        value = self.prepare()
+        for kind in main.KINDS:
+            name = 'silver-' + kind + '.sexp'
+            for path in main.config_location.candidate_paths(self.root, name):
+                self.file(path, self.originals[kind])
+        result = self.publish()
+        for kind in main.KINDS:
+            paths = main.config_location.candidate_paths(self.root, 'silver-' + kind + '.sexp')
+            self.assertEqual(result['config_paths'][kind], list(map(str, paths)))
+            self.assertEqual([main.sha(path.read_bytes()) for path in paths], [value['config_sha256'][kind]] * 6)
+        main.verify_install(self.root, self.store, published=True)
 
     def test_baseline_edit_before_first_publish_is_not_adopted(self):
         self.prepare()

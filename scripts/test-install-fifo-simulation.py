@@ -27,7 +27,8 @@ class InstallerTests(unittest.TestCase):
             binary.write_bytes(b'fake verified executable\n')
             binary.chmod(0o755)
         self.args = ['--provider', str(self.provider), '--simulator', str(self.simulator)]
-        self.config = self.root / 'hardcaml-workbench-simulation.sexp'
+        self.config = self.root / '.silver/silver-simulation.sexp'
+        self.config.parent.mkdir()
 
     def install(self, args=None):
         with contextlib.redirect_stdout(io.StringIO()):
@@ -52,6 +53,23 @@ class InstallerTests(unittest.TestCase):
         self.assertNotEqual(first['generation'], second['generation'])
         self.assertEqual(original, {p.name: p.read_bytes() for p in generation.iterdir()})
         self.assertEqual((Path(second['generation']) / 'test_provider.exe').read_bytes(), b'new provider\n')
+
+    def test_owned_upgrade_preserves_all_six_aliases_and_refuses_conflict(self):
+        self.install()
+        original = self.config.read_bytes()
+        paths = installer.config_location.candidate_paths(self.root, self.config.name)
+        for path in paths[1:]:
+            path.parent.mkdir(exist_ok=True)
+            path.write_bytes(original)
+        second = self.install()
+        self.assertEqual([hashlib.sha256(path.read_bytes()).hexdigest() for path in paths],
+                         [second['config_sha256']] * 6)
+        receipt = json.loads((Path(second['receipt']) / 'receipt.json').read_text())
+        self.assertEqual(receipt['config_paths'], list(map(str, paths)))
+        paths[3].write_bytes(b'conflict')
+        with self.assertRaisesRegex(RuntimeError, 'Conflicting configuration'):
+            self.install()
+        self.assertEqual(paths[3].read_bytes(), b'conflict')
 
     def test_unowned_or_edited_config_refused_before_build(self):
         for owned in (False, True):

@@ -14,10 +14,11 @@ import unittest
 BOOTSTRAP = Path(__file__).resolve().parent.parent / "bootstrap.sh"
 sys.path.insert(0, str(BOOTSTRAP.parent / "integration/workbench"))
 from wire import parse
+import config_location
 
 TARGET = "asics/fifo_demo/cli/chip.exe"
-ASIC = "hardcaml-workbench-asic.sexp"
-PREP = "hardcaml-workbench-preparation.sexp"
+ASIC = "silver-asic.sexp"
+PREP = "silver-preparation.sexp"
 RECORDER = r'''
 import json
 import os
@@ -123,7 +124,7 @@ target.chmod(0o755)
         argv = json.loads(self.build_record.read_text())
         self.assertEqual(argv[0], "build")
         self.assertIn(TARGET, argv)
-        configs = self.project / ".workbench"
+        configs = self.project / ".silver"
         fields = dict(parse((configs / ASIC).read_text()))
         self.assertEqual(fields["project_executable"], str(self.project / "_build/default" / TARGET))
         self.assertEqual(fields["toolchain"], str(self.project / "_flow_tools"))
@@ -147,7 +148,7 @@ target.chmod(0o755)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(self.build_record.is_file())
         self.assertFalse(self.record.exists())
-        config = dict(parse((self.project / ".workbench" / ASIC).read_text()))
+        config = dict(parse((self.project / ".silver" / ASIC).read_text()))
         self.assertEqual(config["toolchain"], str(tools))
 
     def test_relative_script_path_and_cdpath(self):
@@ -180,7 +181,7 @@ target.chmod(0o755)
 
     def test_explicit_root_follows_default(self):
         self.assert_forwarded(["--toolchain", "caller's tools"])
-        fields = dict(parse((self.project / ".workbench" / ASIC).read_text()))
+        fields = dict(parse((self.project / ".silver" / ASIC).read_text()))
         tools = self.caller / "caller's tools"
         self.assertEqual(fields["toolchain"], str(tools))
         for key, relative in (("pdk_root", "pdk"), ("support_tools", "tt"),
@@ -188,10 +189,10 @@ target.chmod(0o755)
             self.assertEqual(fields[key], [str(tools / relative)])
 
     def test_mixed_existing_locations_preserved_without_duplicate_configs(self):
-        root_config = self.project / ASIC
+        root_config = self.project / "hardcaml-workbench-asic.sexp"
         root_config.write_bytes(b"owner's root selection\n")
         self.assert_forwarded([])
-        local = self.project / ".workbench"
+        local = self.project / ".silver"
         self.assertFalse((local / ASIC).exists())
         self.assertTrue((local / PREP).is_file())
         (local / PREP).write_bytes(b"owner's preparation\n")
@@ -202,25 +203,52 @@ target.chmod(0o755)
         self.assertFalse(self.build_record.exists())
 
     def test_conflicting_copies_refused_before_build_or_publication(self):
-        local = self.project / ".workbench"
+        local = self.project / ".silver"
         local.mkdir()
-        for directory in (local, self.project):
-            (directory / PREP).write_text(str(directory))
+        for directory, name in ((local, PREP), (self.project, "hardcaml-workbench-preparation.sexp")):
+            (directory / name).write_text(str(directory))
         self.assertNotEqual(self.invoke().returncode, 0)
-        for directory in (local, self.project):
-            self.assertEqual((directory / PREP).read_text(), str(directory))
+        for directory, name in ((local, PREP), (self.project, "hardcaml-workbench-preparation.sexp")):
+            self.assertEqual((directory / name).read_text(), str(directory))
             self.assertFalse((directory / ASIC).exists())
         self.assertFalse(self.build_record.exists())
+
+    def test_six_identical_copies_retained_then_conflict_rejected(self):
+        names = [self.project / ".silver" / ASIC,
+                 self.project / ASIC,
+                 self.project / ".silver/hardcaml-workbench-asic.sexp",
+                 self.project / ".workbench" / ASIC,
+                 self.project / ".workbench/hardcaml-workbench-asic.sexp",
+                 self.project / "hardcaml-workbench-asic.sexp"]
+        self.assertEqual(config_location.candidate_paths(self.project, ASIC), tuple(names))
+        for path in names:
+            path.parent.mkdir(exist_ok=True)
+            path.write_bytes(b"owner selection\n")
+        self.assertEqual(config_location.selected(self.project, ASIC), names[0])
+        self.assertEqual(config_location.destinations(self.project, ASIC), tuple(names))
+        self.assert_forwarded([])
+        self.assertFalse(self.build_record.exists())
+        self.assertEqual([path.read_bytes() for path in names], [b"owner selection\n"] * 6)
+        for path in names:
+            with self.subTest(conflict=path):
+                path.write_bytes(b"conflict\n")
+                self.assertNotEqual(self.invoke().returncode, 0)
+                self.assertEqual(path.read_bytes(), b"conflict\n")
+                path.write_bytes(b"owner selection\n")
+        for path in names:
+            self.assertEqual(config_location.selected(self.project, ASIC), path)
+            path.unlink()
+        self.assertEqual(config_location.selected(self.project, ASIC), names[0])
 
     def test_failed_provision_or_build_never_publishes_configs(self):
         self.env["EXIT_CODE"] = "37"
         self.assertEqual(self.invoke().returncode, 37)
         self.assertFalse(self.build_record.exists())
-        self.assertFalse((self.project / ".workbench").exists())
+        self.assertFalse((self.project / ".silver").exists())
         del self.env["EXIT_CODE"]
         self.env["BUILD_FAIL"] = "1"
         self.assertEqual(self.invoke().returncode, 42)
-        self.assertFalse((self.project / ".workbench").exists())
+        self.assertFalse((self.project / ".silver").exists())
 
     def test_provider_modes_and_base_python_forwarded_verbatim(self):
         self.assert_forwarded(["--check", "--offline", "--no-container",
@@ -235,7 +263,7 @@ target.chmod(0o755)
         for configured in (False, True):
             with self.subTest(configured=configured):
                 if configured:
-                    config = self.project / ".workbench/hardcaml-workbench-asic.sexp"
+                    config = self.project / ".silver/silver-asic.sexp"
                     config.parent.mkdir()
                     config.write_text("owner's ASIC selection\n")
                     (self.project / "dune-workspace").write_text("owner's workspace\n")

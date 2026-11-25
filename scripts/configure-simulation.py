@@ -18,10 +18,10 @@ from checkout_provider import PREPARE, REFRESH, validate_manifest
 def update_parallel_runs(root, name, existing, fields, count):
     if count is None or fields.get('max_parallel_runs') == str(count):
         return
-    # Changing two mirrored configs cannot be published atomically. Leave them
-    # alone rather than exposing a conflicting pair to a newly opened Silver.
+    # Changing mirrored configs cannot be published atomically. Leave them
+    # alone rather than exposing conflicting copies to a newly opened Silver.
     if len(existing) != 1:
-        raise RuntimeError('cannot change max_parallel_runs with two configuration copies; keep one copy first')
+        raise RuntimeError('cannot change max_parallel_runs with multiple configuration copies; keep one copy first')
     path = next(iter(existing))
     contents = (sexp(list(dict(fields, max_parallel_runs=count).items())) + '\n').encode()
     temp_path = None
@@ -45,7 +45,7 @@ def main(argv=None):
     parser.add_argument('--max-parallel-runs', type=int, choices=range(1, 9),
                         help='set the number of simultaneous simulation attempts (default: 1)')
     args = parser.parse_args(argv)
-    name = 'hardcaml-workbench-simulation.sexp'
+    name = 'silver-simulation.sexp'
     store = ROOT / '.dev/workbench-main'
     manifest = store / 'simulation/manifest.json'
     python = Path(sys.executable).resolve()
@@ -78,6 +78,10 @@ def main(argv=None):
                 timeout = fields[field]
                 if not isinstance(timeout, str) or not timeout.isdecimal() or not 1 <= int(timeout) <= limit:
                     raise RuntimeError('invalid simulation timeout: ' + field)
+            if (args.max_parallel_runs is not None
+                    and fields.get('max_parallel_runs') != str(args.max_parallel_runs)
+                    and len(existing) != 1):
+                raise RuntimeError('cannot change max_parallel_runs with multiple configuration copies; keep one copy first')
             if not args.refresh:
                 if prior is None:
                     raise RuntimeError('missing simulation manifest; run ' + REFRESH)
@@ -108,7 +112,7 @@ def main(argv=None):
             if args.max_parallel_runs is not None:
                 fields.append(('max_parallel_runs', args.max_parallel_runs))
             contents = (sexp(fields) + '\n').encode()
-            directory = ROOT / '.workbench'
+            directory = ROOT / '.silver'
             directory.mkdir(exist_ok=True)
             with NamedTemporaryFile(dir=directory) as temp:
                 temp.write(contents)

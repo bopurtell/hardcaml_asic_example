@@ -47,7 +47,7 @@ python3 -B scripts/silver.py publish --dry-run
 
 Preparation explicitly compiles the current FIFO project, native FIFO provider and
 simulator, and workload emit/public executables at `-j2`. It does not provision
-tools, build Workbench, run simulations/EDA, publish root companions, or start a
+tools, build Silver, run simulations/EDA, publish root companions, or start a
 server. Without `--build`, all required current build paths must already exist.
 
 After coordinating with other users of the root checkout, publish separately:
@@ -108,7 +108,7 @@ Defaults:
   `HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT` rather than enabling its synthesis-only mode.
   It adds no endpoint restriction.
 * SDK: `.dev/workbench-provider-sdk`.
-* Prebuilt Workbench pair: sibling
+* Prebuilt Silver pair: sibling
   `silver/_build_workbench/default/{daemon,terminal}/main.exe`.
 * Root ASIC project executable:
   `_build/default/asics/fifo_demo/cli/chip.exe`.
@@ -145,7 +145,7 @@ The server's persistent state and temporary-log root are explicit; there is no
 `/tmp` acceptance-store dependency.
 
 The inherited project environment is cleaned of Git repository/config selectors,
-captured PT8/Workbench launch selectors, transient SSH/tmux session transports and
+captured PT8/Silver (including legacy Workbench) launch selectors, transient SSH/tmux session transports and
 the synthesis-only cap. `OCAMLPATH`
 contains the selected ASIC and SDK installations; OMP/OpenBLAS/MKL each use one
 thread. PATH is reconstructed from the selected switch bin, provider bin, `/usr/bin`
@@ -153,7 +153,7 @@ and `/bin`, discarding every inherited PATH entry. Builds pin the actual switch
 Dune and `/usr/bin/git` resolution, with a child-process tool/version check.
 
 The explicit launcher/helper build uses `-j2`; this does **not** control the stock
-Workbench preparation build (`-j6`), generic build/test (`-j20`), or EDA's normal
+Silver preparation build (`-j6`), generic build/test (`-j20`), or EDA's normal
 six-worker configuration. The launcher does not enforce an aggregate worker/task
 ceiling. Run **one heavy operation at a time** and budget all sessions/nested work
 within the workspace-wide maximum of 20 jobs. Do not overlap stock preparation,
@@ -184,7 +184,7 @@ workspace or editing its template, run the `build` command above to refresh
 the manifest, then retry simulation discovery. A plain `dune build` alone
 does not write the simulation manifest.
 Simulation source-drift policy is owned by the checkout helper; root companion
-configuration is fenced by Workbench's explicit discovery contract. Ordinary Fresh
+configuration is fenced by Silver's explicit discovery contract. Ordinary Fresh
 ASIC preparation builds current source and emits its own exact bundle.
 
 Publication backs up all existing regular companion bytes before changing any
@@ -199,3 +199,11 @@ Focused launcher verification (inert fixture files, no native daemon or EDA):
 ```sh
 python3 -B scripts/test_workbench_main.py -v
 ```
+
+## Configuration naming
+
+New project companions are `.silver/silver-asic.sexp`,
+`.silver/silver-preparation.sexp`, and `.silver/silver-simulation.sexp`.
+See the [root migration procedure](../README.md#silver-and-local-storage)
+before moving old project files. The prepared store and its receipts keep
+their existing paths and immutable captures.

@@ -21,7 +21,7 @@ def publish(root, filename, fields):
     # into place exclusively so concurrent setup cannot replace a user's file.
     if config_location.copies(root, filename):
         return
-    directory = root / '.workbench'
+    directory = root / '.silver'
     directory.mkdir(exist_ok=True)
     with NamedTemporaryFile(dir=directory) as pending:
         pending.write((sexp(fields) + '\n').encode())
@@ -42,12 +42,12 @@ def main():
     results = ROOT / '_flow_results/workbench'
     executable = ROOT / '_build/default' / TARGET
     configs = {
-        'hardcaml-workbench-asic.sexp': [
+        'silver-asic.sexp': [
             ('schema_version', 1), ('project_executable', executable),
             ('results_root', results / 'asic'), ('toolchain', tools),
             ('python', [tools / '.venv/bin/python']), ('support_tools', [tools / 'tt']),
             ('pdk_root', [tools / 'pdk']), ('stage_timeout_seconds', [3600])],
-        'hardcaml-workbench-preparation.sexp': [
+        'silver-preparation.sexp': [
             ('schema_version', 1), ('build_target', TARGET),
             ('results_root', results / 'preparation'), ('timeout_seconds', 600)],
     }
@@ -55,7 +55,7 @@ def main():
     if not missing:
         print('Keeping existing Silver synthesis and preparation configurations.')
         return
-    if 'hardcaml-workbench-asic.sexp' in missing:
+    if 'silver-asic.sexp' in missing:
         subprocess.run(['opam', 'exec', '--', 'dune', 'build', '--root', str(ROOT),
                         '--build-dir', '_build', '-j', '2', TARGET], check=True)
         if not executable.is_file() or not os.access(executable, os.X_OK):

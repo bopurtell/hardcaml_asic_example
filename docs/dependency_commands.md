@@ -106,7 +106,7 @@ earlier failed preparation remains historical; a new preparation is needed to
 verify the restarted daemon. Use an elaboration-only action when checking this
 repair, since the original Fresh run also requested synthesis. This compiler
 selection does not update the separately pinned physical provider executable in
-`hardcaml-workbench-asic.sexp`.
+`.silver/silver-asic.sexp` (or its existing legacy companion).
 
 Run from `hardcaml_asic_example` in your existing `5.2.0+ox` shell. After a
 development refresh has succeeded, select it **in that same shell**:

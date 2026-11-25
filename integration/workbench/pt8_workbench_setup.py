@@ -123,14 +123,15 @@ def main():
         '--emitter', str(captured / 'workload_emit.exe'), '--model-root', str(models)]
     write(session / 'provider-command.json', provider)
     from wire import sexp
-    (project / 'hardcaml-workbench-preparation.sexp').write_text(sexp([
+    (project / ".silver").mkdir()
+    (project / '.silver/silver-preparation.sexp').write_text(sexp([
         ('schema_version', 1), ('build_target', 'asics/fifo_demo/cli/chip.exe'),
         ('results_root', str(session / 'preparation-results')),
         ('timeout_seconds', 600)]) + '\n')
-    (project / 'hardcaml-workbench-simulation.sexp').write_text(sexp([
+    (project / '.silver/silver-simulation.sexp').write_text(sexp([
         ('schema_version', 1), ('provider_executable', provider[0]), ('provider_args', provider[1:]),
         ('discovery_timeout_seconds', 10), ('run_timeout_seconds', 600)]) + '\n')
-    (project / 'hardcaml-workbench-asic.sexp').write_text(sexp([
+    (project / '.silver/silver-asic.sexp').write_text(sexp([
         ('schema_version', 1), ('project_executable', str(captured / 'project.exe')),
         ('provider_executable', str(generation / 'bin/hardcaml-asic-flow')),
         ('results_root', str(session / 'asic-results')), ('toolchain', str(ROOT / '_flow_tools')),
@@ -145,7 +146,7 @@ def main():
         'wb_build_root': str(ROOT.parent / 'silver' / BUILD),
         'captured_files': {str(p.relative_to(captured)): sha(p)
                            for p in sorted(captured.rglob('*')) if p.is_file()}})
-    for p in project.glob('*.sexp'):
+    for p in (project / '.silver').glob('*.sexp'):
         p.chmod(0o444)
     # Freeze this configured generation. A future setup always creates a new session.
     for p in captured.rglob('*'):

@@ -1,14 +1,37 @@
-"""Workbench companion lookup; paths inside a config remain project-root relative.
+"""Silver companion lookup; paths inside a config remain project-root relative.
 
 Writers retain existing locations (including both identical copies). This helper
-never creates .workbench or migrates a configuration.
+never creates a directory or migrates a configuration.
 """
 import os
 from pathlib import Path
 import stat
 
-BASENAMES = ('hardcaml-workbench.sexp', 'hardcaml-workbench-asic.sexp',
-             'hardcaml-workbench-simulation.sexp', 'hardcaml-workbench-preparation.sexp')
+BASENAMES = ('silver.sexp', 'silver-asic.sexp',
+             'silver-simulation.sexp', 'silver-preparation.sexp')
+
+
+def legacy_name(filename):
+    return filename.replace('silver', 'hardcaml-workbench', 1)
+
+
+def candidate_paths(root, filename):
+    root = Path(root)
+    if not root.is_absolute() or filename not in BASENAMES:
+        raise ValueError('expected absolute root and a Silver configuration basename')
+    old = legacy_name(filename)
+    return (root / '.silver' / filename, root / filename,
+            root / '.silver' / old, root / '.workbench' / filename,
+            root / '.workbench' / old, root / old)
+
+
+def captured(root, filename):
+    """Immutable prepared selections used either basename across versions."""
+    paths = (root / filename, root / legacy_name(filename))
+    found = {path: data for path in paths if (data := read_regular(path)) is not None}
+    if len(set(found.values())) > 1:
+        raise RuntimeError('Conflicting captured configuration files: ' + str(root))
+    return next(iter(found), paths[0])
 
 
 def read_regular(path, max_bytes=1024 * 1024):
@@ -41,21 +64,23 @@ def read_regular(path, max_bytes=1024 * 1024):
 
 
 def copies(root, filename):
-    root = Path(root)
-    if not root.is_absolute() or filename not in BASENAMES:
-        raise ValueError('expected absolute root and a Workbench configuration basename')
-    paths = (root / '.workbench' / filename, root / filename)
+    paths = candidate_paths(root, filename)
     found = {path: data for path in paths if (data := read_regular(path)) is not None}
-    if len(found) == 2 and len(set(found.values())) != 1:
+    if len(set(found.values())) > 1:
         raise RuntimeError('Conflicting configuration files: ' + ' and '.join(map(str, found)) + ' differ')
     return found
 
 
 def selected(root, filename):
     found = copies(root, filename)
-    return next(iter(found), Path(root) / filename)
+    return next(iter(found), candidate_paths(root, filename)[0])
 
 
 def destinations(root, filename):
     """Freeze these paths before publication: intermediate dual writes can differ."""
-    return tuple(copies(root, filename)) or (Path(root) / filename,)
+    return tuple(copies(root, filename)) or (candidate_paths(root, filename)[0],)
+
+
+def existing_configs(root):
+    """All present recognized configs, including byte-identical aliases."""
+    return [path for filename in BASENAMES for path in copies(root, filename)]

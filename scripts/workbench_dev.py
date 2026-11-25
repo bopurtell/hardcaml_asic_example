@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare and open one stable editable Workbench development project."""
+"""Prepare and open one stable editable Silver development project."""
 import argparse
 import contextlib
 import ctypes
@@ -164,16 +164,16 @@ def sync_dir(path):
 
 
 def config_name(kind):
-    return 'hardcaml-workbench-' + kind + '.sexp'
+    return 'silver-' + kind + '.sexp'
 
 
 def config_paths(project, kind):
     # The older private-store symlink publication has a separate, verified
-    # explicit-refresh recovery path. Never extend that exception to .workbench.
-    legacy = project / config_name(kind)
+    # explicit-refresh recovery path. Never extend that exception to other aliases.
+    candidates = config_location.candidate_paths(project, config_name(kind))
+    legacy = candidates[-1]
     if legacy.is_symlink():
-        common = project / '.workbench' / legacy.name
-        if config_location.read_regular(common) is not None:
+        if any(config_location.read_regular(path) is not None for path in candidates[:-1]):
             raise RuntimeError('legacy symlink configuration coexists with common configuration')
         return (legacy,)
     return config_location.destinations(project, config_name(kind))
@@ -188,8 +188,22 @@ def unsettled(store):
 
 def config_hashes(manifest):
     # The old symlink generation recorded these same bytes in captured_files.
-    return manifest.get('config_files', {config_name(kind): manifest['captured_files']['config/' + config_name(kind)]
-                                        for kind in CONFIGS})
+    if 'config_files' in manifest:
+        return manifest['config_files']
+    return {config_location.legacy_name(config_name(kind)):
+            manifest['captured_files']['config/' + config_location.legacy_name(config_name(kind))]
+            for kind in CONFIGS}
+
+
+def captured_config(manifest, kind):
+    path = config_location.captured(Path(manifest['generation']) / 'config', config_name(kind))
+    return path, config_hashes(manifest)[path.name]
+
+
+def project_config_hashes(manifest):
+    project = Path(manifest['store']) / 'project'
+    return {str(path.relative_to(project)): captured_config(manifest, kind)[1]
+            for kind in CONFIGS for path in config_paths(project, kind)}
 
 
 def config_state(path):
@@ -243,7 +257,9 @@ def recover_publication(store):
         raise RuntimeError('selection edited during interrupted publication; refusing automatic overwrite')
     # Validate ALL files and rollback bytes before replacing ANYTHING. Unknown
     # edits leave the journal intact for manual reconciliation, never overwritten.
-    allowed_names = {prefix + config_name(kind) for prefix in ('', '.workbench/') for kind in CONFIGS}
+    project = store / 'project'
+    allowed_names = {str(path.relative_to(project)) for kind in CONFIGS
+                     for path in config_location.candidate_paths(project, config_name(kind))}
     if set(journal['old_configs']) - allowed_names or set(journal['new_configs']) != set(journal['old_configs']):
         raise RuntimeError('unowned publication configuration paths')
     for name in journal['old_configs']:
@@ -298,7 +314,7 @@ def publish(store, prior, manifest, receipt):
     sync_dir(rollback)
     journal = dict(schema_version=1, store=str(store), old_generation=prior['generation'] if prior else None,
                    new_generation=manifest['generation'], old_configs=old_configs,
-                   new_configs={name: manifest['config_files'][config_name(kind)] for name, kind in targets.items()})
+                   new_configs={name: captured_config(manifest, kind)[1] for name, kind in targets.items()})
     # Publish a complete, fsynced journal atomically: a crash while writing JSON
     # must not leave an unreadable recovery marker before any config changed.
     intent = receipt / 'publication-intent.json'
@@ -311,7 +327,8 @@ def publish(store, prior, manifest, receipt):
             path = store / 'project' / name
             if config_state(path) != old_configs[name]:
                 raise RuntimeError('private configuration changed during publication: ' + name)
-            data = (Path(manifest['generation']) / 'config' / config_name(kind)).read_bytes()
+            data = captured_config(manifest, kind)[0].read_bytes()
+            path.parent.mkdir(parents=True, exist_ok=True)
             replace_regular(path, data)
         select_generation(store, manifest['generation'])
         verify(manifest, allow_pending=True)
@@ -413,7 +430,8 @@ def verify(manifest, *, configs=True, allow_legacy=False, allow_pending=False):
         raise RuntimeError('private project path contains a symlink')
     for kind in CONFIGS:
         config = config_paths(project, kind)[0]
-        expected = store / 'selected/config' / config.name
+        captured, digest = captured_config(manifest, kind)
+        expected = store / 'selected/config' / captured.name
         if config.is_symlink():
             if not allow_legacy or 'config_files' in manifest:
                 raise RuntimeError('legacy symlink configuration requires explicit prepare --refresh: ' + str(config))
@@ -421,7 +439,7 @@ def verify(manifest, *, configs=True, allow_legacy=False, allow_pending=False):
                 raise RuntimeError('private configuration link edited; refusing overwrite: ' + str(config))
         elif not config.is_file():
             raise RuntimeError('private configuration edited; refusing overwrite: ' + str(config))
-        if sha(config) != config_hashes(manifest)[config.name]:
+        if sha(config) != digest:
             raise RuntimeError('private configuration hash changed; refusing overwrite: ' + str(config))
 
 
@@ -480,7 +498,7 @@ def capture_apps_only(args, store, prior, receipt):
         raise RuntimeError('--apps-only requires both explicit expected app hashes')
     if inventory(store / 'project', SOURCE_FILES + SOURCE_DIRS) != prior['source_files']:
         raise RuntimeError('--apps-only refuses source drift')
-    if inventory(store / 'project', ('.',)) != dict(prior['source_files'], **config_hashes(prior)):
+    if inventory(store / 'project', ('.',)) != dict(prior['source_files'], **project_config_hashes(prior)):
         raise RuntimeError('--apps-only refuses additional authored source/configuration')
     verify(prior)
     generation = store / 'generations' / receipt.name
@@ -507,7 +525,7 @@ def capture_apps_only(args, store, prior, receipt):
             raise RuntimeError('app pair changed during app-only capture')
     if inventory(store / 'project', SOURCE_FILES + SOURCE_DIRS) != prior['source_files']:
         raise RuntimeError('source changed during app-only capture')
-    if inventory(store / 'project', ('.',)) != dict(prior['source_files'], **config_hashes(prior)):
+    if inventory(store / 'project', ('.',)) != dict(prior['source_files'], **project_config_hashes(prior)):
         raise RuntimeError('source/configuration closure changed during app-only capture')
     verify(prior)
     manifest = json.loads(json.dumps(prior))
@@ -595,7 +613,7 @@ def capture(args, store, prior, receipt, migration=None):
         for kind, path in originals.items():
             copy_checked(path, generation / 'apps' / (kind + '.exe'))
         if before != {kind: sha(path) for kind, path in originals.items()}:
-            raise RuntimeError('Workbench app pair changed during capture; retry refresh')
+            raise RuntimeError('Silver app pair changed during capture; retry refresh')
     for directory, names in (
         ('integration/workbench', ('pt8_workbench_provider.py', 'pt8_workbench_runner.py', 'workbench_paths.py', 'wire.py', 'workbench_provider.py')),
         ('tooling_acceptance/workloads/controls', ('pt8_workloads.py',)),
@@ -649,7 +667,7 @@ def capture(args, store, prior, receipt, migration=None):
     provider = [python, '-B', str(generation / 'provider/integration/workbench/workbench_provider.py'),
                 '--manifest', str(generation / 'manifest.json')]
     def config(kind, values):
-        (generation / 'config' / ('hardcaml-workbench-' + kind + '.sexp')).write_text(sexp(values) + '\n')
+        (generation / 'config' / config_name(kind)).write_text(sexp(values) + '\n')
     config('simulation', [('schema_version', 1), ('provider_executable', provider[0]), ('provider_args', provider[1:]),
                           ('discovery_timeout_seconds', 30), ('run_timeout_seconds', 600)])
     config('preparation', [('schema_version', 1), ('build_target', 'asics/fifo_demo/cli/chip.exe'),

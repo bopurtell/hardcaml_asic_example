@@ -286,7 +286,7 @@ Using the exact private ASIC prefix above:
   ```
 
   Without that extra SDK path, the broad build reports the existing missing
-  `hardcaml_workbench_provider` dependency; the memory targets need only the ASIC
+  `silver_provider` dependency; the memory targets need only the ASIC
   prefix. No dependency build/install, active-generation change, Workbench config
   edit, or physical EDA was needed. Exact's unsupported production mapping is the
    intentional remaining backend blocker at PT.0.

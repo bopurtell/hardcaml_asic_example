@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Persistent Workbench on this checkout. Preparation never starts a server.
+"""Persistent Silver on this checkout. Preparation never starts a server.
 
 Simulation helper handoff: supply a regular FS2 configuration with --simulation-config.
 Its provider_args must select integration/workbench/checkout_provider.py and an
@@ -112,7 +112,7 @@ def environment(root, store, asic, sdk, inherited=None):
     env = clean_environment(os.environ if inherited is None else inherited)
     # Captured-session selectors and the opt-in synthesis-only envelope must not leak.
     for name in list(env):
-        if name.startswith(('PT8_', 'HARDCAML_WORKBENCH_', 'SSH_')) or name in (
+        if name.startswith(('PT8_', 'HARDCAML_WORKBENCH_', 'SILVER_', 'SSH_')) or name in (
                 'HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT', 'TMUX', 'TMUX_PANE'):
             env.pop(name)
     env.update(OCAMLPATH=str(asic / 'lib') + ':' + str(sdk / 'lib'),
@@ -226,7 +226,7 @@ def ensure_stopped(root, store, inspect_root=False):
     if inspect_root:
         users = root_users(root)
         if users:
-            raise RuntimeError('root checkout may be in use by Workbench PIDs: ' + ', '.join(users))
+            raise RuntimeError('root checkout may be in use by Silver PIDs: ' + ', '.join(users))
 
 
 def paths(root):
@@ -263,7 +263,7 @@ def configure_dune(root, installation, switch_lib, user_lib):
 
 
 def companion(root, kind):
-    return config_location.selected(root, 'hardcaml-workbench-' + kind + '.sexp')
+    return config_location.selected(root, 'silver-' + kind + '.sexp')
 
 
 def metadata(store):
@@ -292,7 +292,7 @@ def verify_install(root, store, published=False):
         if sha(regular(Path(app['path']))) != app['sha256']:
             raise RuntimeError('installed app changed: ' + kind)
     for kind, digest in value['config_sha256'].items():
-        if sha(regular(Path(value['selection']) / 'config' / companion(root, kind).name)) != digest:
+        if sha(regular(config_location.captured(Path(value['selection']) / 'config', 'silver-' + kind + '.sexp'))) != digest:
             raise RuntimeError('prepared companion changed: ' + kind)
         if published and sha(regular(companion(root, kind))) != digest:
             raise RuntimeError('root companion differs; explicitly publish prepared configuration: ' + kind)
@@ -453,7 +453,7 @@ def prepare(args, root, store):
         dest.chmod(0o555)
         apps[kind] = dict(path=str(dest), sha256=sha(data), source=str(source_apps[kind]))
     for kind, data in configs.items():
-        write(selection / 'config' / companion(root, kind).name, data)
+        write(selection / 'config' / ('silver-' + kind + '.sexp'), data)
     # Baseline records exact existing root bytes, never an implicit adoption.
     baseline = prior['baseline_sha256'] if prior else {}
     for kind in KINDS:
@@ -479,7 +479,7 @@ def publish(root, store, dry_run=False):
     owned_path = store / 'published.json'
     owned = json.loads(regular(owned_path)) if owned_path.exists() else None
     expected = owned['config_sha256'] if owned else value['baseline_sha256']
-    targets = {kind: config_location.destinations(root, 'hardcaml-workbench-' + kind + '.sexp')
+    targets = {kind: config_location.destinations(root, 'silver-' + kind + '.sexp')
                for kind in KINDS}
     previous = {kind: regular(targets[kind][0], missing=True) for kind in KINDS}
     for kind, data in previous.items():
@@ -501,11 +501,11 @@ def publish(root, store, dry_run=False):
     try:
         ensure_stopped(root, store, inspect_root=True)
         for kind in KINDS:
-            if config_location.destinations(root, 'hardcaml-workbench-' + kind + '.sexp') != targets[kind]:
+            if config_location.destinations(root, 'silver-' + kind + '.sexp') != targets[kind]:
                 raise RuntimeError('companion locations changed during publication: ' + kind)
             if any(regular(path, missing=True) != previous[kind] for path in targets[kind]):
                 raise RuntimeError('companion changed during publication: ' + kind)
-            data = regular(Path(value['selection']) / 'config' / targets[kind][0].name)
+            data = regular(config_location.captured(Path(value['selection']) / 'config', 'silver-' + kind + '.sexp'))
             for path in targets[kind]:
                 write(path, data)
                 changed.append((kind, path))

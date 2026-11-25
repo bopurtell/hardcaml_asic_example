@@ -1,5 +1,5 @@
 open! Core
-open Hardcaml_workbench_provider
+open Silver_provider
 
 let suite_id = "controlled-fifo"
 

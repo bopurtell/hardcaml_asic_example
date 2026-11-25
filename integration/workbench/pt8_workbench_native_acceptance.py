@@ -97,7 +97,8 @@ class Terminal:
 def protected_state():
     """Only read root configuration and the exact programs it currently selects."""
     from http_client import parse
-    paths = list(ROOT.glob('hardcaml-workbench*.sexp')) + [ROOT / 'asic-dependency.json']
+    from config_location import existing_configs
+    paths = existing_configs(ROOT) + [ROOT / 'asic-dependency.json']
     for path in list(paths):
         if path.suffix != '.sexp':
             continue
@@ -110,9 +111,10 @@ def protected_state():
 
 
 def installed_state(session, manifest):
+    from config_location import existing_configs
     paths = list((session / 'provider').rglob('*'))
     paths += list(Path(manifest['generation']).rglob('*'))
-    paths += list((session / 'project').glob('*.sexp'))
+    paths += existing_configs(session / 'project')
     paths += list((session / 'tool-bin').glob('*'))
     return {str(p): sha(p) for p in sorted(paths) if p.is_file()}
 

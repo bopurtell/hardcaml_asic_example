@@ -7,5 +7,5 @@
 (executable
  (name test_provider)
  (modules test_provider)
- (libraries core hardcaml_workbench_provider)
+ (libraries core silver_provider)
  (preprocess (pps ppx_jane)))

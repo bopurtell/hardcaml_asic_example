@@ -260,7 +260,8 @@ ocamlfind query hardcaml_asic
 
 Refresh builds/installs/probes with `-j20` internally and publishes only this
 explicit store's selection. It installs no compiler dependencies and does not
-update the normal `.dev/asic/current` or `hardcaml-workbench-asic.sexp`. Set
+update the normal `.dev/asic/current` or `.silver/silver-asic.sexp` (including
+any existing legacy companion). Set
 `SESSION`, `PROJECT`, `PROVIDER` and `TOOLS` explicitly instead if reusing already
 validated installed executables; no reinstall is needed solely to collect terminal
 physical metrics. Source captures are local receipts, not release stamps.

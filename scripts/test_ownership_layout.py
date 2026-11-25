@@ -14,6 +14,71 @@ import workbench_provider as router
 
 
 class OwnershipLayout(unittest.TestCase):
+    def test_private_publication_and_recovery_with_six_aliases(self):
+        with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory:
+            store = Path(directory)
+            project = store / 'project'
+            project.mkdir()
+            generations = store / 'generations'
+            receipts = store / 'receipts'
+            receipts.mkdir()
+            manifests = []
+            for label in ('old', 'new'):
+                generation = generations / label
+                config = generation / 'config'
+                config.mkdir(parents=True)
+                hashes = {}
+                for kind in dev.CONFIGS:
+                    name = dev.config_name(kind)
+                    if label == 'old':
+                        name = dev.config_location.legacy_name(name)
+                    data = (label + '-' + kind).encode()
+                    path = config / name
+                    path.write_bytes(data)
+                    hashes[name] = router.sha(path)
+                    if label == 'old':
+                        for target in dev.config_location.candidate_paths(project, dev.config_name(kind)):
+                            target.parent.mkdir(exist_ok=True)
+                            target.write_bytes(data)
+                manifests.append(dict(store=str(store), generation=str(generation), config_files=hashes))
+            prior, new = manifests
+            dev.select_generation(store, prior['generation'])
+            expected = dev.project_config_hashes(prior)
+            self.assertEqual(len(expected), 18)
+            self.assertEqual(router.inventory(project, ('.',)), expected)
+            receipt = receipts / 'new'
+            receipt.mkdir()
+            replace = dev.replace_regular
+
+            # Crash on the third update, then recover from the journal's exact
+            # paths (including the mixed directory/name aliases).
+            class Crash(BaseException):
+                pass
+
+            calls = 0
+
+            def interrupt(path, data):
+                nonlocal calls
+                calls += 1
+                if calls == 3:
+                    raise Crash()
+                replace(path, data)
+
+            with patch.object(dev, 'replace_regular', side_effect=interrupt):
+                with self.assertRaises(Crash):
+                    dev.publish(store, prior, new, receipt)
+            self.assertTrue((store / 'publication.json').is_file())
+            dev.recover_publication(store)
+            self.assertEqual(router.inventory(project, ('.',)), expected)
+            self.assertEqual((store / 'selected').resolve(), Path(prior['generation']))
+            receipt = receipts / 'second-attempt'
+            receipt.mkdir()
+            with patch.object(dev, 'verify') as verify:
+                dev.publish(store, prior, new, receipt)
+                verify.assert_called_once_with(new, allow_pending=True)
+            self.assertEqual(router.inventory(project, ('.',)), dev.project_config_hashes(new))
+            self.assertEqual((store / 'selected').resolve(), Path(new['generation']))
+
     def test_nested_import_and_support_update_races(self):
         # Reuse the isolated migration-race fixture without the integrated suite's
         # setUpClass, which captures apps and builds a complete private project.

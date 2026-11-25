@@ -81,13 +81,14 @@ class Acceptance(unittest.TestCase):
         cls.evidence.mkdir()
         cls.counter = 0
         cls.protected = {}
-        for name in ('hardcaml-workbench-simulation.sexp', 'hardcaml-workbench-asic.sexp',
-                     'hardcaml-workbench-preparation.sexp', 'asics/fifo_demo/project/fifo_chip.ml',
-                     'asics/fifo_demo/verif/bundle/dune'):
+        for kind in dev.CONFIGS:
+            for path in dev.config_paths(ROOT, kind):
+                cls.protected[str(path)] = router.sha(path)
+        for name in ('asics/fifo_demo/project/fifo_chip.ml', 'asics/fifo_demo/verif/bundle/dune'):
             path = ROOT / name
             cls.protected[str(path)] = router.sha(path)
         for name in ('simulation', 'asic'):
-            fields = dict(parse((ROOT / ('hardcaml-workbench-' + name + '.sexp')).read_text()))
+            fields = dict(parse(dev.config_paths(ROOT, name)[0].read_text()))
             for key in ('provider_executable', 'project_executable'):
                 if key in fields:
                     path = Path(fields[key])
@@ -386,11 +387,11 @@ class Acceptance(unittest.TestCase):
         self.prepare()
         self.assertEqual(json.loads((self.store / 'manifest.json').read_text()), current)
         # Configs are admitted regular files, with exact selected-manifest hashes.
-        for name, digest in current['config_files'].items():
+        for name, digest in dev.project_config_hashes(current).items():
             path = self.store / 'project' / name
             self.assertFalse(path.is_symlink())
             self.assertEqual(router.sha(path), digest)
-        path = self.store / 'project/hardcaml-workbench-simulation.sexp'
+        path = dev.config_paths(self.store / 'project', 'simulation')[0]
         owned = path.read_bytes()
         dev.replace_regular(path, owned + b'\n; user-edited configuration\n')
         edited_bytes = path.read_bytes()
@@ -438,7 +439,7 @@ class Acceptance(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, 'prepare --refresh'):
                     dev.selected_manifest(self.store)
                 # Unknown concurrent config edits are never overwritten by recovery.
-                path = self.store / 'project/hardcaml-workbench-simulation.sexp'
+                path = dev.config_paths(self.store / 'project', 'simulation')[0]
                 partial = path.read_bytes()
                 dev.replace_regular(path, partial + b'\n; edited after interruption\n')
                 changed = path.read_bytes()
@@ -546,7 +547,7 @@ class Acceptance(unittest.TestCase):
                 self.assertTrue(discovered['discovery'], 'native simulation discovery did not finish')
                 self.assertEqual([dict(s)['id'] for s in dict(discovered['discovery'][0])['suites']], list(router.SUITES))
                 for kind in dev.CONFIGS:
-                    self.assertFalse((self.store / 'project' / dev.config_name(kind)).is_symlink())
+                    self.assertFalse(dev.config_paths(self.store / 'project', kind)[0].is_symlink())
                 dev.write(directory / 'native-discover.json', dict(passed=True, requests=http_records,
                           discovery=discovered, regular_configs=True))
             finally:

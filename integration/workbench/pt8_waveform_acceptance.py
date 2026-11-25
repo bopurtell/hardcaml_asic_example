@@ -13,14 +13,15 @@ import uuid
 sys.dont_write_bytecode = True
 from workbench_paths import ROOT
 from wire import parse, sexp
+from config_location import existing_configs
 from pt8_acceptance import sha, write
 from pt8_workloads import validate_waveform
 
 
 def protected():
-    paths = list(ROOT.glob('hardcaml-workbench*.sexp')) + [ROOT / 'asic-dependency.json',
+    paths = existing_configs(ROOT) + [ROOT / 'asic-dependency.json',
         ROOT / 'asics/fifo_demo/verif/bundle/dune', ROOT / 'asics/fifo_demo/project/fifo_chip.ml']
-    for path in ROOT.glob('hardcaml-workbench*.sexp'):
+    for path in existing_configs(ROOT):
         for key, value in parse(path.read_text()):
             if key in ('provider_executable', 'project_executable'):
                 paths.append(Path(value))
@@ -28,7 +29,7 @@ def protected():
         session = ROOT / '.dev/asic-pt8-workbench' / name
         paths += [session / 'manifest.json', session / 'source-snapshot.json']
         paths += list((session / 'provider').rglob('*'))
-        paths += list((session / 'project').glob('*.sexp'))
+        paths += existing_configs(session / 'project')
     paths += list((ROOT / 'acceptance/pt8-workloads/simulation-04').rglob('*'))
     return {str(p): {'sha256': sha(p), 'link': os.readlink(p) if p.is_symlink() else None}
             for p in sorted(set(paths)) if p.is_file()}

@@ -96,7 +96,7 @@ under `<id>/profiles/`. No Dune or default-selection edit is needed.
 isolated copy of FIFO, including plan and recorded run dispatch without EDA.
 Refresh/install is an explicit separate action; ordinary builds do not provision
 EDA tools. Building the native simulation adapter additionally requires the Silver
-provider SDK (`hardcaml_workbench_provider`).
+provider SDK (`silver_provider`).
 
 For an existing prepared installation, `python3 -B scripts/silver.py configure-dune`
 sets up checkout-local Dune library discovery once. Then `dune build .` works in
@@ -240,22 +240,30 @@ On a prepared and published checkout, run `python3 -B scripts/silver.py open`
 to use Silver in one terminal. Quitting stops that session's daemon. See
 [Everyday Silver](docs/workbench_main.md) for setup and persistent-server mode.
 
-The supported Workbench loader currently discovers the three root companion files:
+Silver configuration is stored in `.silver/`, including the optional
+`silver.sexp` project settings and three companions:
 
-* `hardcaml-workbench-preparation.sexp`: build current source and emit its bundle.
-* `hardcaml-workbench-asic.sexp`: selected project/provider executables, physical
+* `silver-preparation.sexp`: build current source and emit its bundle.
+* `silver-asic.sexp`: selected project/provider executables, physical
   toolchain, result locations, and execution budget.
-* `hardcaml-workbench-simulation.sexp`: selected simulation provider and budgets.
+* `silver-simulation.sexp`: selected simulation provider and budgets.
 
 The preparation build target now names `asics/fifo_demo/cli/chip.exe`. The
 ASIC/simulation companions retain their existing pinned executables; moving source
 does not rebuild or upgrade those selections.
 
-The intended unified entry point is `.workbench/project.sexp`, but it requires a
-coordinated Workbench loader change. Current companion files remain operational.
-See the [continuation handoff](docs/migration_plans/workbench_continuation.md)
-before creating or resuming a development session. Existing copied projects keep
-their original layout; the new setup uses an explicit new `--store`.
+Both `silver*.sexp` and `hardcaml-workbench*.sexp` are recognized at the root,
+in `.silver/`, and in `.workbench/`. The canonical names in `.silver/` take
+precedence, but only if all existing copies have identical bytes. Setup retains
+existing files and rejects conflicting copies.
+To migrate manually, stop Silver and all setup processes, check that any copies
+of each configuration have identical bytes, then move the old files to `.silver/`
+and rename their `hardcaml-workbench` prefix to `silver`. Do not overwrite
+different existing bytes. Keep project-relative paths inside the files unchanged.
+Retain `.dev/workbench-main`, ownership receipts, results, and prepared generations
+at their existing paths; their hashes and absolute paths remain valid.
+Do not rename immutable captured files or interrupt a pending publication;
+recover it first using its original store and receipts.
 
 Local storage roles:
 

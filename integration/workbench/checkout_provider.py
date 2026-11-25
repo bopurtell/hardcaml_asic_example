@@ -35,7 +35,7 @@ def clean_environment(environment):
     """Match the launcher's checkout environment without captured-session selectors."""
     env = router.clean_environment(environment)
     for name in list(env):
-        if name.startswith(('PT8_', 'HARDCAML_WORKBENCH_')) or name == 'HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT':
+        if name.startswith(('PT8_', 'HARDCAML_WORKBENCH_', 'SILVER_')) or name == 'HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT':
             env.pop(name)
     return env
 

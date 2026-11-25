@@ -39,7 +39,7 @@ class ConfiguredChipDispatch(unittest.TestCase):
                 return subprocess.check_output(args, cwd=root, text=True)
 
             run(sys.executable, '-B', 'scripts/configure-synthesis.py')
-            config = root / '.workbench/hardcaml-workbench-asic.sexp'
+            config = root / '.silver/silver-asic.sexp'
             cli = Path(dict(parse(config.read_text()))['project_executable'])
             self.assertEqual(cli.parent, root / '_build/default/asics/fifo_demo/cli')
 

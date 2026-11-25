@@ -25,6 +25,9 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "integration/workbench"))
+from config_location import existing_configs
+
 HISTORIES = (ROOT / "acceptance/sram/8b48d7d0-functional",
              ROOT / "acceptance/sram/physical-p4")
 BASE = HISTORIES[1]
@@ -59,7 +62,7 @@ def inventory(root):
 def protected_state():
     """Hash histories/config bytes and record all existing development pointers."""
     result = {str(p.relative_to(ROOT)): sha(p) for root in HISTORIES for p in files(root)}
-    for p in [ROOT / "asic-dependency.json", *ROOT.glob("hardcaml-workbench-*.sexp")]:
+    for p in [ROOT / "asic-dependency.json", *existing_configs(ROOT)]:
         result[str(p.relative_to(ROOT))] = sha(p)
     for p in sorted((ROOT / ".dev").glob("*/current")):
         if p.is_symlink() and p.parent.name != "asic-pt5b":

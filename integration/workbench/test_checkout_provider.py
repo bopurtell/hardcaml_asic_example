@@ -280,7 +280,8 @@ class CheckoutProvider(unittest.TestCase):
     def test_empty_environment_is_complete_and_default_environment_is_cleaned(self):
         ambient = {'HARDCAML_ASIC_SYNTHESIS_TASK_LIMIT': '6',
                    'PT8_VENDOR_MODEL_ROOT': '/obsolete/models',
-                   'HARDCAML_WORKBENCH_SESSION': 'obsolete', 'CHECKOUT_AMBIENT_ONLY': 'ambient'}
+                   'HARDCAML_WORKBENCH_SESSION': 'obsolete', 'SILVER_TRACE_WAVEFORM_PREPARATION': '1',
+                   'CHECKOUT_AMBIENT_ONLY': 'ambient'}
         with patch.dict(os.environ, ambient):
             self.options['environment'] = {}
             self.prepare()

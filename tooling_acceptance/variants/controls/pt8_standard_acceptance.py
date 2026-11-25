@@ -25,8 +25,9 @@ def source_baseline(project, manifest):
     # Setup snapshots authored source before writing these session-local configs.
     # Check all other copied bytes against that snapshot, then freeze the actual
     # configured source tree for this acceptance attempt.
-    configured = {f'hardcaml-workbench-{domain}.sexp'
-                  for domain in ('asic', 'preparation', 'simulation')}
+    from config_location import BASENAMES, candidate_paths
+    configured = {str(path.relative_to(project)) for name in BASENAMES
+                  for path in candidate_paths(project, name)}
     baseline = {name: sha(project / name) for name in manifest['source_snapshot']}
     assert all(baseline[name] == digest for name, digest in manifest['source_snapshot'].items()
                if name not in configured), 'private authored source differs from its capture'

@@ -119,20 +119,22 @@ def adoption_timeouts(root, old, ownership, expected):
 
 def main(argv=None, *, root=ROOT):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--build', action='store_true', help='explicitly build test_provider.exe and fifo_sim.exe at -j<=6')
+    p.add_argument('--build', action='store_true', help='explicitly build test_provider.exe and fifo_sim.exe at -j<=5')
     p.add_argument('--with-switch', type=Path, default=ROOT.parent / 'silver/scripts/with-switch.sh')
     p.add_argument('--build-dir', type=Path, default=Path('/tmp/opencode/native-provider-example'))
-    p.add_argument('--jobs', type=int, choices=range(1, 7), default=6)
+    p.add_argument('--jobs', type=int, choices=range(1, 6), default=5)
     p.add_argument('--simulator', type=Path, help='already verified executable; required without --build')
     p.add_argument('--provider', type=Path, help='prebuilt native test_provider.exe; required without --build')
     p.add_argument('--adopt-config-sha256', metavar='EXPECTED',
                    help='explicitly adopt these exact edited config bytes, with verified prior ownership and persistent backup')
     a = p.parse_args(argv)
     root = root.resolve(strict=True)
-    config = config_location.selected(root, 'hardcaml-workbench-simulation.sexp')
+    config = config_location.selected(root, 'silver-simulation.sexp')
     manifest = root / '.dev/fifo-simulation-install.json'
     old = config.read_bytes() if config.exists() else None
     ownership = manifest.read_bytes() if manifest.exists() else None
+    if old is None and ownership is not None and a.adopt_config_sha256 is None:
+        raise RuntimeError('Owned configuration is missing; restore its exact bytes before reinstalling')
     timeouts = (10, 120)
     if a.adopt_config_sha256 is not None:
         if config.is_symlink() or manifest.is_symlink():
@@ -154,9 +156,10 @@ def main(argv=None, *, root=ROOT):
 
 
 def install(a, root, config, manifest, old, ownership, timeouts):
-    targets = config_location.destinations(root, config.name)
+    name = 'silver-simulation.sexp'
+    targets = config_location.destinations(root, name)
     def unchanged():
-        if (config_location.destinations(root, config.name) != targets
+        if (config_location.destinations(root, name) != targets
                 or any(config_location.read_regular(path) != old for path in targets)):
             raise RuntimeError('configuration changed during install; refusing edit')
         if (manifest.read_bytes() if manifest.exists() else None) != ownership:
@@ -216,6 +219,7 @@ def install(a, root, config, manifest, old, ownership, timeouts):
     try:
         for path in targets:
             if old is None:
+                path.parent.mkdir(parents=True, exist_ok=True)
                 os.link(pending, path)
             else:
                 replace_bytes(path, contents)
