@@ -34,6 +34,6 @@ after changes; do not reuse an old capture's plan against new source. The legacy
 `flow run` and Signoff are rejected; the provider owns segmented execution.
 
 Real installed qualification and Workbench launch/reopen evidence are described in
-[the provider guide](../../../../hardcaml_asic/docs/guides/segmented-sram.md) and
-[Workbench release record](../../../../silver/docs/sram_segmented_release.md).
+[the provider guide](https://github.com/LeEmperor/hardcaml_asic/blob/main/docs/guides/segmented-sram.md) and
+[the historical Silver release record](https://github.com/bopurtell/silver/blob/724893db4325b58f657fb447c8f85cb1d53f4cc2/docs/sram_segmented_release.md).
 The original main FIFO configuration and installations were preserved.

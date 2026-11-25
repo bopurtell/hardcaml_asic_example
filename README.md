@@ -4,17 +4,22 @@ Hardware projects and external-consumer qualification for `hardcaml_asic` and
 Silver (formerly Hardcaml Workbench). The original design is a controlled FIFO ASIC; the repository
 also includes a program-memory SRAM ASIC and small tool-qualification fixtures.
 
-**First run on a fresh clone:** with `hardcaml_asic` and [Silver installed](../silver/README.md#install-and-open-silver),
-run these from this example, in the switch where you installed the ASIC libraries:
+**First run on a fresh clone:** with `hardcaml_asic` and the
+[Silver OCaml provider SDK](https://github.com/bopurtell/silver/blob/oxcaml/docs/install.md#install-the-ocaml-provider-sdk)
+installed, run these from this example, in the switch where you installed the
+ASIC libraries:
 
 ```sh
 ./bootstrap.sh
-silver --standalone
+ag --standalone
 ```
 
 Bootstrap provisions the physical tools, builds the FIFO chip CLI and
 configures the checkout's Standard flow and two simulation suites for Silver.
-After that, run `silver --standalone`. Silver shows **Project: `hardcaml_asic_example`**.
+For synthesis only, see the
+[Silver quickstart](https://github.com/bopurtell/silver#try-the-asic-example),
+which does not need the Silver OCaml SDK.
+After that, run `ag --standalone`. Silver shows **Project: `hardcaml_asic_example`**.
 Its default launch target is **`controlled_fifo / default`**. The provider on `PATH` supplies execution; the example's own CLI
 supplies its flow catalog, including `standard / balanced / synthesis`.
 For a checkout whose `_flow_tools` was provisioned before this setup step was
@@ -25,7 +30,7 @@ For simulation on an already provisioned checkout:
 ```sh
 python3 -B scripts/configure-simulation.py
 silver-simulation-setup check --root "$PWD"  # lists 2 suites / 5 cases
-silver --standalone
+ag --standalone
 ```
 
 Reopen Silver after setup. The suite catalog loads **Controlled FIFO** (`controlled-fifo`)

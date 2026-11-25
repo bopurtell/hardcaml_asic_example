@@ -4,7 +4,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import shutil
 import stat
 import subprocess
 import sys
@@ -92,12 +91,10 @@ def main(argv=None):
         toolchain = args.toolchain or ROOT / '_flow_tools'
         model_root = (Path(prior['model_root']) if prior is not None and args.toolchain is None else
                       toolchain / 'pdk/ihp-sg13cmos5l/libs.ref/sg13cmos5l_sram/verilog')
-        silver = shutil.which('silver')
-        paths = [os.environ.get('OCAMLPATH', '')]
-        if silver:
-            paths.append(str(Path(silver).parent.parent / 'lib'))
         env = {k: os.environ[k] for k in ('PATH', 'HOME', 'OPAMROOT', 'OPAMSWITCH') if k in os.environ}
-        env.update(OCAMLPATH=os.pathsep.join(filter(None, paths)),
+        # The SDK belongs to the project compiler environment, not the
+        # application installation (which may use a private OxCaml switch).
+        env.update(OCAMLPATH=os.environ.get('OCAMLPATH', ''),
                    PATH=str(switch / 'bin') + os.pathsep + env['PATH'])
         prepare_simulation(project_root=ROOT, build_dir='_build_simulation',
                            asic_generation=prefix, model_root=model_root,

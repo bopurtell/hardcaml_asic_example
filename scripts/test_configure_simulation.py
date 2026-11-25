@@ -78,6 +78,20 @@ class ConfigureSimulation(unittest.TestCase):
         setup.main(['--refresh'])
         self.build.assert_called_once()
 
+    def test_sdk_discovery_uses_project_environment_not_application_prefix(self):
+        foreign = self.root / 'foreign-app/bin'
+        foreign.mkdir(parents=True)
+        for name in ('silver', 'ag'):
+            launcher = foreign / name
+            launcher.write_text('#!/bin/sh\nexit 0\n')
+            launcher.chmod(0o755)
+        with patch.dict(setup.os.environ, {'PATH': str(foreign) + ':/usr/bin',
+                                          'OCAMLPATH': '/project-sdk/lib'}):
+            setup.main(['--refresh'])
+        env = self.build.call_args.kwargs['environment']
+        self.assertEqual(env['OCAMLPATH'], '/project-sdk/lib')
+        self.assertTrue(env['PATH'].startswith('/current-switch/bin:'))
+
     def test_check_validates_existing_normal_manifest_without_building(self):
         value = self.write_manifest(installed=True)
         setup.main([])
